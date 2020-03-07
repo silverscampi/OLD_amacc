@@ -1,0 +1,7 @@
+cflags = -Wall -g3 -O0 -fdiagnostics-color=always -std=c11
+clink = -ldl
+
+rule cc
+  command = gcc $cflags -o $out $in $clink
+
+build vm: cc vm.c fstring.c
