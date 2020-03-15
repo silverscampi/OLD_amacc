@@ -264,14 +264,20 @@ int ir_emit(int* emit)
             "OPEN READ WRIT CLOS PRTF MALC FREE "
             "MSET MCMP MCPY MMAP "
             "DSYM BSCH STRT DLOP DIV  MOD  SNPR EXIT CLCA" [*E * 5]);
-        write(lli_fd, buf, k);
-        if (*E <= ADJ) {
-            memset(buf, '\0', 20);
-            k = snprintf(buf, 20, " %d\n", *++E);
+        if(src){
+            printf("%s", buf);
+            if (*E <= ADJ) printf(" %d\n", *(E + 1)); else printf("\n");
+        }
+        if(ir){
             write(lli_fd, buf, k);
-        } else {
-            char* c = "\n";
-            write(lli_fd, c, sizeof(char));
+            if (*E <= ADJ) {
+                memset(buf, '\0', 20);
+                k = snprintf(buf, 20, " %d\n", *++E);
+                write(lli_fd, buf, k);
+            } else {
+                char* c = "\n";
+                write(lli_fd, c, sizeof(char));
+            }
         }
     }
     return 0;
@@ -388,17 +394,7 @@ void next()
             if (src) {
                 printf("%d: %.*s", line, p - lp, lp);
                 lp = p;
-                while (le < e) {
-                    printf("%8.4s",
-                           & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
-                             "LI   LC   SI   SC   PSH  "
-                             "OR   XOR  AND  EQ   NE   LT   GT   LE   GE   "
-                             "SHL  SHR  ADD  SUB  MUL  "
-                             "OPEN READ WRIT CLOS PRTF MALC FREE "
-                             "MSET MCMP MCPY MMAP "
-                             "DSYM BSCH STRT DLOP DIV  MOD  SNPR EXIT CLCA" [*++le * 5]);
-                    if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
-                }
+                while (le < e) { ++le; if (*le <= ADJ) ++le;}
             }
             ++line;
         case ' ':
@@ -1169,7 +1165,7 @@ void stmt(int ctx)
                 }
                 *--n = ld - loc; *--n = Enter;
                 cas = 0;
-                if (ir) { int *emit_start = e; gen(n); ir_emit(emit_start); }
+                if (ir || src) { int *emit_start = e; gen(n); ir_emit(emit_start); }
                 else { gen(n); }
                 id = sym; // unwind symbol table locals
                 while (id->tk) {
