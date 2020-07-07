@@ -1393,6 +1393,9 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case DIV:
         case MOD:
+	  // Commenting out because ArchSim doesn't like dynamic library calls
+	    die("Detected MOD instruction - exiting!");
+	  /*
             *je++ = 0xe52d0004;                     // push {r0}
             if (elf) {
                 tmp = (int) plt_func_addr[i - OPEN];
@@ -1408,6 +1411,7 @@ int *codegen(int *jitmem, int *jitmap)
             *il++ = (int) je++ + 1;
             *iv++ = tmp;
             break;
+	  */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1428,6 +1432,9 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
+	      // Commenting out because ArchSim doesn't like dynamic library calls
+	      die("Detected syscall - exiting!");
+	      /*
                 tmp = (int) (elf ? plt_func_addr[i - OPEN] :
                                    dlsym(0, scnames[i - OPEN]));
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
@@ -1442,6 +1449,7 @@ int *codegen(int *jitmem, int *jitmap)
                 *iv++ = tmp;
                 if (i > 4) *je++ = 0xe28dd018;              // add sp, sp, #24
                 break;
+	      */
             }
             else {
                 printf("code generation failed for %d!\n", i);
