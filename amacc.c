@@ -1295,6 +1295,11 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
+static int __printf_trampoline(const char *fmt, int x) {
+    printf(fmt, x);
+    fflush(stdout);
+}
+
 int *codegen(int *jitmem, int *jitmap)
 {
     int i, tmp;
@@ -1393,6 +1398,11 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case DIV:
         case MOD:
+            // Commenting out cause ArchSim doesn't like dynamic library calls
+            printf("Detected MOD instruction!!");
+            fflush(stdout);
+            abort();
+            /*
             *je++ = 0xe52d0004;                     // push {r0}
             if (elf) {
                 tmp = (int) plt_func_addr[i - OPEN];
@@ -1408,6 +1418,7 @@ int *codegen(int *jitmem, int *jitmap)
             *il++ = (int) je++ + 1;
             *iv++ = tmp;
             break;
+            */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1428,8 +1439,12 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
-                tmp = (int) (elf ? plt_func_addr[i - OPEN] :
+                if (i == PRTF) {
+                    tmp = (int) &__printf_trampoline;
+                } else {
+                    tmp = (int) (elf ? plt_func_addr[i - OPEN] :
                                    dlsym(0, scnames[i - OPEN]));
+                }        
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
                 if (i > 10) die("codegen: no support for 10+ arguments");
