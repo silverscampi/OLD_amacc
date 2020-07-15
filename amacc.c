@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dlfcn.h>
+#include <stdarg.h>
 
 /* 64-bit host support */
 #if defined(__x86_64__) || defined(__aarch64__)
@@ -1295,9 +1296,16 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
-static int __printf_trampoline(const char *fmt, int x) {
-    printf(fmt, x);
-    fflush(stdout);
+static int __printf_trampoline(const char *fmt, ...) {
+    // implemented just like glibc's printf
+    va_list args;
+    int done;
+
+    va_start(args, fmt);
+    done = vfprintf(stdout, fmt, args);
+    va_end(args);
+
+    return done;
 }
 
 int *codegen(int *jitmem, int *jitmap)
@@ -1399,7 +1407,7 @@ int *codegen(int *jitmem, int *jitmap)
         case DIV:
         case MOD:
             // Commenting out cause ArchSim doesn't like dynamic library calls
-            printf("Detected MOD instruction!!");
+            printf("Detected MOD instruction!!\n");
             fflush(stdout);
             abort();
             /*
@@ -1442,8 +1450,13 @@ int *codegen(int *jitmem, int *jitmap)
                 if (i == PRTF) {
                     tmp = (int) &__printf_trampoline;
                 } else {
-                    tmp = (int) (elf ? plt_func_addr[i - OPEN] :
-                                   dlsym(0, scnames[i - OPEN]));
+                    if (elf) {
+                        tmp = (int) plt_func_addr[i - OPEN];
+                    } else {
+                        printf("Detected syscall other than printf!!\n");
+                        fflush(stdout);
+                        abort();
+                    }
                 }        
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
