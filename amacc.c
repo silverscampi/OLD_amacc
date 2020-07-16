@@ -505,7 +505,7 @@ void expr(int lev)
                 if (tk == ',') {
                     next();
                     if (tk == ')') fatal("unexpected comma in function call");
-		} else if (tk != ')') fatal("missing comma in function call");
+		        } else if (tk != ')') fatal("missing comma in function call");
             }
             next();
             // function or system call id
