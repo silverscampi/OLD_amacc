@@ -229,7 +229,8 @@ enum {
     /* system call shortcuts */
     OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
     CLCA, /* clear cache, used by JIT compilation */
-    INVALID
+    INVALID,
+    NOOP
 };
 
 // types
@@ -350,7 +351,7 @@ void next()
                              "SHL  SHR  ADD  SUB  MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
-                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
+                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA NOOP" [*++le * 5]);
                     if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
                 }
             }
@@ -1308,6 +1309,10 @@ static int __printf_trampoline(const char *fmt, ...) {
     return done;
 }
 
+static void noop_instr(int coproc, int opcode1, int Rt, int CRn, int CRm, int opcode2) {
+    // noop
+}
+
 int *codegen(int *jitmem, int *jitmap)
 {
     int i, tmp;
@@ -1447,9 +1452,11 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
-                if (i == PRTF) {
+                if         (i == PRTF) {
                     tmp = (int) &__printf_trampoline;
-                } else {
+                } else  if (i == NOOP) {
+                    tmp = (int) &noop_instr;
+                } else  {
                     if (elf) {
                         tmp = (int) plt_func_addr[i - OPEN];
                     } else {
@@ -2191,7 +2198,7 @@ int main(int argc, char **argv)
         "open read write close printf malloc free "
         "memset memcmp memcpy mmap "
         "dlsym bsearch __libc_start_main "
-        "dlopen __aeabi_idiv __aeabi_idivmod exit __clear_cache void main";
+        "dlopen __aeabi_idiv __aeabi_idivmod exit __clear_cache noop void main";
 
     // name vector to system call
     // must match the sequence of supported calls
@@ -2215,7 +2222,7 @@ int main(int argc, char **argv)
     }
 
     // add library to symbol table
-    for (i = OPEN; i < INVALID; i++) {
+    for (i = OPEN; i < NOOP; i++) {
         next(); id->class = Syscall; id->type = INT; id->val = i;
     }
     next(); id->tk = Char; // handle void type
