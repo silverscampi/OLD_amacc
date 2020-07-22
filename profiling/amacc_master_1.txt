@@ -1,0 +1,253 @@
+arginc
+---------------------
+function	count
+---------------------
+next		54
+expr		2
+gen		8
+stmt		4
+codegen		1
+
+
+assign
+---------------------
+function	count
+---------------------
+next		219
+expr		71
+gen		158
+stmt		38
+codegen		1
+
+
+char
+---------------------
+function	count
+---------------------
+next		242
+expr		63
+gen		147
+stmt		37
+codegen		1
+
+
+comments
+---------------------
+function	count
+---------------------
+next		45
+expr		1
+gen		5
+stmt		2
+codegen		1
+
+
+cond
+---------------------
+function	count
+---------------------
+next		77
+expr		10
+gen		23
+stmt		9
+codegen		1
+
+
+enum
+---------------------
+function	count
+---------------------
+next		93
+expr		13
+gen		27
+stmt		10
+codegen		1
+
+
+eq
+---------------------
+function	count
+---------------------
+next		361
+expr		149
+gen		143
+stmt		38
+codegen		1
+
+
+fib
+---------------------
+function	count
+---------------------
+next		187
+expr		47
+gen		112
+stmt		29
+codegen		1
+
+
+for
+---------------------
+function	count
+---------------------
+next		144
+expr		35
+gen		81
+stmt		16
+codegen		1
+
+
+func_call
+---------------------
+function	count
+---------------------
+next		80
+expr		10
+gen		27
+stmt		10
+codegen		1
+
+
+func_param
+---------------------
+function	count
+---------------------
+next		59
+expr		6
+gen		16
+stmt		6
+codegen		1
+
+
+hello
+---------------------
+function	count
+---------------------
+next		50
+expr		3
+gen		8
+stmt		3
+codegen		1
+
+
+inc
+---------------------
+function	count
+---------------------
+next		87
+expr		8
+gen		25
+stmt		10
+codegen		1
+
+
+jit
+---------------------
+function	count
+---------------------
+next		165
+expr		50
+gen		91
+stmt		20
+codegen		1
+
+
+literal
+---------------------
+function	count
+---------------------
+next		66
+expr		8
+gen		23
+stmt		7
+codegen		1
+
+
+local
+---------------------
+function	count
+---------------------
+next		100
+expr		20
+gen		53
+stmt		17
+codegen		1
+
+
+printf
+---------------------
+function	count
+---------------------
+next		60
+expr		8
+gen		13
+stmt		3
+codegen		1
+
+
+ptr
+---------------------
+function	count
+---------------------
+next		123
+expr		28
+gen		59
+stmt		14
+codegen		1
+
+
+read
+---------------------
+function	count
+---------------------
+next		123
+expr		27
+gen		49
+stmt		16
+codegen		1
+
+
+shift
+---------------------
+function	count
+---------------------
+next		282
+expr		109
+gen		146
+stmt		26
+codegen		1
+
+
+struct
+---------------------
+function	count
+---------------------
+next		390
+expr		115
+gen		255
+stmt		53
+codegen		1
+
+
+switch
+---------------------
+function	count
+---------------------
+next		93
+expr		13
+gen		36
+stmt		15
+codegen		1
+
+
+while
+---------------------
+function	count
+---------------------
+next		106
+expr		19
+gen		47
+stmt		16
+codegen		1
+
+
