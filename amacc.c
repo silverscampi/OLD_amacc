@@ -24,16 +24,19 @@
 #include <time.h>
 
 // profiling counters
+/*
 int next_count = 0;
 int expr_count = 0;
 int gen_count = 0;
 int stmt_count = 0;
 int codegen_count = 0;
+*/
 
 // profiling timers
+/*
 clock_t codegen_firstpass_start, codegen_firstpass_diff;
 clock_t codegen_secondpass_start, codegen_secondpass_diff;
-
+*/
 
 /* 64-bit host support */
 #if defined(__x86_64__) || defined(__aarch64__)
@@ -267,7 +270,7 @@ char *append_strtab(char **strtab, char *str)
  * 2. set tk to appropriate type
  */
 void next()
-{   next_count++;
+{   //next_count++;
     char *pp;
 
     /* using loop to ignore whitespace characters, but characters that
@@ -452,7 +455,7 @@ char fatal(char *msg) { printf("%d: %s\n", line, msg); exit(-1); }
  * large `lev` indicates a high priority.
  */
 void expr(int lev)
-{   expr_count++;
+{   //expr_count++;
     int otk;
     int t, *b, sz, *c;
     struct ident_s *d;
@@ -828,7 +831,7 @@ void expr(int lev)
 // With a modular code generator, new targets can be easily supported such as
 // native Arm machine code.
 void gen(int *n)
-{   gen_count++;
+{   //gen_count++;
     int i = *n, j, k, l;
     int *a, *b, *c, *d;
 
@@ -995,7 +998,7 @@ void gen(int *n)
 
 // statement parsing (syntax analysis, except for declarations)
 void stmt(int ctx)
-{   stmt_count++;
+{   //stmt_count++;
     int *a, *b, *c, *d, *f;
     int i, j;
     int bt, ty;
@@ -1309,8 +1312,8 @@ int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
 int *codegen(int *jitmem, int *jitmap)
-{   codegen_count++;
-    codegen_firstpass_start = clock();
+{   //codegen_count++;
+    //codegen_firstpass_start = clock();
 
     int i, tmp;
     int *je, *tje;    // current position in emitted native code
@@ -1496,10 +1499,10 @@ int *codegen(int *jitmem, int *jitmap)
     }
     if (il > immloc) die("codegen: not terminated by a LEV");
     tje = je;
-    codegen_firstpass_diff = clock() - codegen_firstpass_start;
+    //codegen_firstpass_diff = clock() - codegen_firstpass_start;
 
     // second pass
-    codegen_secondpass_start = clock();
+    //codegen_secondpass_start = clock();
 
     pc = text + 1; // Point instruction pointer "pc" to the first instruction.
     while (pc <= e) { // While instruction end is not met.
@@ -1531,12 +1534,14 @@ int *codegen(int *jitmem, int *jitmap)
         else if (i < LEV) { ++pc; }
     }
     free(iv);
-    codegen_secondpass_diff = clock() - codegen_secondpass_start;
-
+    //codegen_secondpass_diff = clock() - codegen_secondpass_start;
+    /*
     printf("cpu time spent in first pass of codegen:\n\t%d ticks (%f ms)\n\n",
             codegen_firstpass_diff, ((float)codegen_firstpass_diff)*1000/CLOCKS_PER_SEC);
     printf("cpu time spent in second pass of codegen:\n\t%d ticks (%f ms)\n\n",
             codegen_secondpass_diff, ((float)codegen_secondpass_diff)*1000/CLOCKS_PER_SEC);
+    */
+
     return tje;
 }
 
@@ -2249,6 +2254,7 @@ int main(int argc, char **argv)
     free(freed_ast);
 
     // print profiling info
+    /*
     printf( "---------------------\n"
             "function\tcount\n"
             "---------------------\n"
@@ -2258,6 +2264,6 @@ int main(int argc, char **argv)
             "stmt\t\t%d\n"
             "codegen\t\t%d\n\n\n",
             next_count, expr_count, gen_count, stmt_count, codegen_count);
-
+    */
     return ret;
 }
