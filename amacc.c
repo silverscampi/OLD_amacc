@@ -54,6 +54,9 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
+// template buffer
+int templ_buf[42] = {0};
+
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -212,15 +215,15 @@ enum {
     PSH , /* 13 */
     /* PSH pushes the value in general register onto the stack */
 
-    OR  , /* 14 */  XOR , /* 15 */  AND , /* 16 */
-    EQ  , /* 17 */  NE  , /* 18 */
-    LT  , /* 19 */  GT  , /* 20 */  LE  , /* 21 */ GE  , /* 22 */
-    SHL , /* 23 */  SHR , /* 24 */
-    ADD , /* 25 */  SUB , /* 26 */  MUL , /* 27 */
+    OR=14  ,        XOR=17 ,        AND=20 , 
+    EQ  , /* 21 */  NE  , /* 22 */
+    LT  , /* 23 */  GT  , /* 24 */  LE  , /* 25 */ GE  , /* 26 */
+    SHL=27 ,        SHR=30 , 
+    ADD=33 ,        SUB=36 ,        MUL=39 ,
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
-     * After the calculation is done, the argument on the stack will be poped
+     * After the calculation is done, the argument on the stack will be popped
      * out and the result will be stored in general register.
      * So you are not able to fetch the first argument from the stack after
      * the calculation.
@@ -1380,6 +1383,7 @@ int *codegen(int *jitmem, int *jitmap)
         case PSH:
             *je++ = 0xe52d0004;                       // push {r0}
             break;
+        /*
         case OR:
             *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
             break;
@@ -1404,6 +1408,7 @@ int *codegen(int *jitmem, int *jitmap)
         case MUL:
             *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
             break;
+        */
         case DIV:
         case MOD:
             // Commenting out cause ArchSim doesn't like dynamic library calls
@@ -1436,6 +1441,52 @@ int *codegen(int *jitmem, int *jitmap)
                                                     // svc 0
             break;
         default:
+            if ((OR <= i && i <= AND) || (SHL <= i && i <= MUL)) {
+                printf("template JIT instruction:\t%d", i);
+                int *pje = je;
+                printf("current je: %p", pje);
+            // hardcoding registers is bad practice... but....
+
+            // remember to use memory clobber where necessary!
+
+            // set up register variables? e.g.
+            // register int tbp asm("r1") = (int) templ_buf;
+            // register int cbp asm("r2") = (int) je;
+            // register int ir  asm("r3") = i;
+
+            // je === cbp!
+            // what does this mean?
+            // this means that when we hit this code, je points at first empty position in emitted code
+            // so we can use constraints to say that cbp symbol uses the c variable je as an input,
+            //  AND an output! because it is incremented by the asm. make sure this works.
+
+            // i should only be an input, asm should not change value of c variable i.
+
+            // can what is done atm by asm be done simply as c?
+            // looping just in asm feels like it could be nicer than a c loop with asm inside it...
+
+            // tmplcpy takes single rd as operand, but NEEDS rd+1 and rd+2 to be loaded correctly.
+            //  do the constraints guarantee this?
+                    __asm__ __volatile__ (
+                    "loop:   ldr    ??, [tbp, i]\n\t"
+                            "add    ir, ir, #1\n\t"
+                            "mrc    3, 0, r1, 0, 0\n\t"     // tmplcpy
+                            "add    cbp, cbp, #4\n\t"       // increment cbp/je
+                            "subs   ??, ??, #1\n\t"
+                            "bne    loop"
+                    );
+
+                printf("asm done.\nnew je: %p", je);
+                // all instrs here write just +2 words to emitted code, so the new je should be +64 to old je.
+                printf("new je == old je + 64? ");
+                if (je == pje + 2) {
+                    printf("TRUE\n");
+                } else {
+                    printf("FALSE\n");   
+                }
+            }
+
+
             if (EQ <= i && i <= GE) {
                 *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                 if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
@@ -2183,7 +2234,42 @@ int main(int argc, char **argv)
     memset(ast, 0, poolsz);
     ast = (int *) ((int) ast + poolsz); // abstract syntax tree is most efficiently built as a stack
 
-    /* Resgister keywords and system calls to symbol stack
+
+    // populate template buffer
+    // OR
+    templ_buf[OR]   = 2;
+    templ_buf[OR+1] = 0xe49d1004;
+    templ_buf[OR+2] = 0xe1810000;
+    // XOR
+    templ_buf[XOR]  = 2;
+    templ_buf[XOR+1]= 0xe49d1004;
+    templ_buf[XOR+2]= 0xe0210000;
+    // AND
+    templ_buf[AND]  = 2;
+    templ_buf[AND+1]= 0xe49d1004;
+    templ_buf[AND+2]= 0xe0010000;
+    // SHL
+    templ_buf[SHL]  = 2;
+    templ_buf[SHL+1]= 0xe49d1004;
+    templ_buf[SHL+2]= 0xe1a00011;
+    // SHR
+    templ_buf[SHR]  = 2;
+    templ_buf[SHR+1]= 0xe49d1004;
+    templ_buf[SHR+2]= 0xe1a00051;
+    // ADD
+    templ_buf[ADD]  = 2;
+    templ_buf[ADD+1]= 0xe49d1004;
+    templ_buf[ADD+2]= 0xe0800001;
+    // SUB
+    templ_buf[SUB]  = 2;
+    templ_buf[SUB+1]= 0xe49d1004;
+    templ_buf[SUB+2]= 0xe0410000;
+    // MUL
+    templ_buf[MUL]  = 2;
+    templ_buf[MUL+1]= 0xe49d1004;
+    templ_buf[MUL+2]= 0xe0000091;
+
+    /* Register keywords and system calls to symbol stack
      * must match the sequence of enum
      */
     p = "break case char default else enum if int return "
