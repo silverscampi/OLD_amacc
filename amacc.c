@@ -1442,35 +1442,24 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         default:
             if ((OR <= i && i <= AND) || (SHL <= i && i <= MUL)) {
-                printf("template JIT instruction:\t%d", i);
+                printf("template JIT instruction:\t%d\n", i);
                 int *pje = je;
-                printf("current je: %p", pje);
-            // hardcoding registers is bad practice... but....
+                printf("current je: %p\n", pje);
+                fflush(stdout);
+            
+                register int *tbp asm("r4") = templ_buf;
+                register int *cbp asm("r5") = je;
+                register int  ir asm("r6") = i;  
 
-            // remember to use memory clobber where necessary!
-
-            // set up register variables?
-
-            // je === cbp!
-            // what does this mean?
-            // this means that when we hit this code, je points at first empty position in emitted code
-            // so we can use constraints to say that cbp symbol uses the c variable je as an input,
-            //  AND an output! because it is incremented by the asm. make sure this works.
-
-            // i should only be an input, asm should not change value of c variable i.
-
-            // can what is done atm by asm be done simply as c?
-            // looping just in asm feels like it could be nicer than a c loop with asm inside it...
-
-            // tmplcpy takes single rd as operand, but NEEDS rd+1 and rd+2 to be loaded correctly.
-            //  do the constraints guarantee this?
-
-                register int tbp asm("r1") = (int) templ_buf;
-                register int cbp asm("r2") = (int) je;
-                register int  ir asm("r3") =       i;  
+                printf("\ntempl_buf: %p\n", templ_buf);
+                printf("&templ_buf[0]: %p\n", &templ_buf[0]);
+                printf("tbp: %p\n\n",tbp);
+                printf("cbp: %p\n", cbp);
+                printf("ir: %d\n\n", i);
+                fflush(stdout);
 
                 asm volatile (
-                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+                    "mrc    p3, #0, r4, cr0, cr0"     // tmplcpy
 
                     //outputs
                     : "+l" (cbp)
@@ -1483,7 +1472,7 @@ int *codegen(int *jitmem, int *jitmap)
                     : "memory"
                 );
 
-                printf("asm done.\nnew je: %p", je);
+                printf("asm done.\nnew je: %p\n", je);
                 // all instrs here write just +2 words to emitted code at the moment, so the new je should be +64 to old je.
                 printf("new je == old je + 64? ");
                 if (je == pje + 2) {
@@ -1491,6 +1480,7 @@ int *codegen(int *jitmem, int *jitmap)
                 } else {
                     printf("FALSE\n");   
                 }
+                fflush(stdout);
             }
 
 
