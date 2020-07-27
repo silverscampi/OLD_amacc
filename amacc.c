@@ -1447,19 +1447,20 @@ int *codegen(int *jitmem, int *jitmap)
                 printf("current je: %p\n", pje);
                 fflush(stdout);
             
-                register int *tbp asm("r4") = templ_buf;
-                register int *cbp asm("r5") = je;
-                register int  ir asm("r6") = i;  
+                register int *tbp asm("r1") = templ_buf;
+                register int *cbp asm("r2") = je;
+                register int  ir asm("r3") = i;  
 
+            /*
                 printf("\ntempl_buf: %p\n", templ_buf);
                 printf("&templ_buf[0]: %p\n", &templ_buf[0]);
                 printf("tbp: %p\n\n",tbp);
                 printf("cbp: %p\n", cbp);
                 printf("ir: %d\n\n", i);
                 fflush(stdout);
-
+            */
                 asm volatile (
-                    "mrc    p3, #0, r4, cr0, cr0"     // tmplcpy
+                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
 
                     //outputs
                     : "+l" (cbp)
