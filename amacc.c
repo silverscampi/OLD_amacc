@@ -1412,7 +1412,7 @@ int *codegen(int *jitmem, int *jitmap)
         case DIV:
         case MOD:
             // Commenting out cause ArchSim doesn't like dynamic library calls
-            printf("Detected MOD instruction!!\n");
+            printf("Detected DIV/MOD instruction!!\n");
             fflush(stdout);
             abort();
             /*
@@ -1449,10 +1449,7 @@ int *codegen(int *jitmem, int *jitmap)
 
             // remember to use memory clobber where necessary!
 
-            // set up register variables? e.g.
-            // register int tbp asm("r1") = (int) templ_buf;
-            // register int cbp asm("r2") = (int) je;
-            // register int ir  asm("r3") = i;
+            // set up register variables?
 
             // je === cbp!
             // what does this mean?
@@ -1467,17 +1464,27 @@ int *codegen(int *jitmem, int *jitmap)
 
             // tmplcpy takes single rd as operand, but NEEDS rd+1 and rd+2 to be loaded correctly.
             //  do the constraints guarantee this?
-                    __asm__ __volatile__ (
-                    "loop:   ldr    ??, [tbp, i]\n\t"
-                            "add    ir, ir, #1\n\t"
-                            "mrc    3, 0, r1, 0, 0\n\t"     // tmplcpy
-                            "add    cbp, cbp, #4\n\t"       // increment cbp/je
-                            "subs   ??, ??, #1\n\t"
-                            "bne    loop"
-                    );
+
+                register int tbp asm("r1") = (int) templ_buf;
+                register int cbp asm("r2") = (int) je;
+                register int  ir asm("r3") =       i;  
+
+                asm volatile (
+                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+
+                    //outputs
+                    : "+l" (cbp)
+                    
+                    //inputs
+                    : "l" (tbp),
+                      "l" (ir)
+                    
+                    //clobbers
+                    : "memory"
+                );
 
                 printf("asm done.\nnew je: %p", je);
-                // all instrs here write just +2 words to emitted code, so the new je should be +64 to old je.
+                // all instrs here write just +2 words to emitted code at the moment, so the new je should be +64 to old je.
                 printf("new je == old je + 64? ");
                 if (je == pje + 2) {
                     printf("TRUE\n");
