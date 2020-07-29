@@ -1308,6 +1308,18 @@ static int __printf_trampoline(const char *fmt, ...) {
     return done;
 }
 
+static void *__malloc_trampoline(size_t size) {
+    return malloc(size);
+}
+
+static void __free_trampoline(void *ptr) {
+    free(ptr);
+}
+
+static void __exit_trampoline(int status) {
+    exit(status);
+}
+
 int *codegen(int *jitmem, int *jitmap)
 {
     int i, tmp;
@@ -1449,11 +1461,17 @@ int *codegen(int *jitmem, int *jitmap)
             else if (i >= OPEN && i <= EXIT) {
                 if (i == PRTF) {
                     tmp = (int) &__printf_trampoline;
+                } else if (i == MALC) {
+                    tmp = (int) &__malloc_trampoline;
+                } else if (i == FREE) {
+                    tmp = (int) &__free_trampoline;
+                } else if (i == EXIT){
+                    tmp = (int) &__exit_trampoline;
                 } else {
                     if (elf) {
                         tmp = (int) plt_func_addr[i - OPEN];
                     } else {
-                        printf("Detected syscall other than printf!!\n");
+                        printf("Detected syscall other than printf! : %d\n", i);
                         fflush(stdout);
                         abort();
                     }
