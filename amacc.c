@@ -1447,18 +1447,10 @@ int *codegen(int *jitmem, int *jitmap)
                 printf("current je: %p\n", pje);
                 fflush(stdout);
             
+                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
                 register int *tbp asm("r1") = templ_buf;
                 register int *cbp asm("r2") = je;
                 register int  ir asm("r3") = i;  
-
-            /*
-                printf("\ntempl_buf: %p\n", templ_buf);
-                printf("&templ_buf[0]: %p\n", &templ_buf[0]);
-                printf("tbp: %p\n\n",tbp);
-                printf("cbp: %p\n", cbp);
-                printf("ir: %d\n\n", i);
-                fflush(stdout);
-            */
                 asm volatile (
                     "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
 
@@ -1472,8 +1464,9 @@ int *codegen(int *jitmem, int *jitmap)
                     //clobbers
                     : "memory"
                 );
-
+                je = cbp;
                 printf("asm done.\nnew je: %p\n", je);
+                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
                 // all instrs here write just +2 words to emitted code at the moment, so the new je should be +64 to old je.
                 printf("new je == old je + 64? ");
                 if (je == pje + 2) {
@@ -1485,7 +1478,7 @@ int *codegen(int *jitmem, int *jitmap)
             }
 
 
-            if (EQ <= i && i <= GE) {
+            else if (EQ <= i && i <= GE) {
                 *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                 if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
                 else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
