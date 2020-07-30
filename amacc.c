@@ -1442,7 +1442,7 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         default:
             if ((OR <= i && i <= AND) || (SHL <= i && i <= MUL)) {
-                printf("template JIT instruction:\t%d\n", i);
+                printf("\ntemplate JIT instruction:\t%d\n", i);
                 int *pje = je;
                 printf("current je: %p\n", pje);
                 fflush(stdout);

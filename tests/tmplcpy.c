@@ -17,19 +17,19 @@ int main() {
     // AND
     a = 0xAAAA;
     b = 0x5555;
-    printf("a:\t%x\nb:\t%x\na&b:\t%x\n\n", a, b, a&b);  // 0xFFFF
+    printf("a:\t%x\nb:\t%x\na&b:\t%x\n\n", a, b, a&b);  // 0x0000
 
     // SHL
     a = 0x1000;
     b = 5;
-    printf("a:\t\t%x\na<<1:\t%x\n", a, a<<1);
-    printf("b:\t%d\na:\t\t%x\na<<b:\t%x\n\n", b, a, a<<b);  // 0x20000
+    printf("a:\t%x\na<<1:\t%x\n", a, a<<1);
+    printf("b:\t%d\na:\t%x\na<<b:\t%x\n\n", b, a, a<<b);  // 0x20000
 
     // SHR
     a = 0xabcdef;
     b = 8;
-    printf("a:\t\t%x\na>>4:\t%x\n", a, a>>4);
-    printf("b:\t%d\na:\t\t%x\na>>b:\t%x\n\n", b, a, a>>b);  // 0xABCD
+    printf("a:\t%x\na>>4:\t%x\n", a, a>>4);               // 0xABCDE
+    printf("b:\t%d\na:\t%x\na>>b:\t%x\n\n", b, a, a>>b);  // 0xABCD
 
     // ADD
     a = 86;
