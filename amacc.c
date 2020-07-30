@@ -1451,15 +1451,15 @@ int *codegen(int *jitmem, int *jitmap)
                 register int *tbp asm("r1") = templ_buf;
                 register int *cbp asm("r2") = je;
                 register int  ir asm("r3") = i;  
-                asm volatile (
+                __asm__ __volatile__ (
                     "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
 
                     //outputs
-                    : "+l" (cbp)
+                    : "+r" (cbp)
                     
                     //inputs
-                    : "l" (tbp),
-                      "l" (ir)
+                    : "r" (tbp),
+                      "r" (ir)
                     
                     //clobbers
                     : "memory"
