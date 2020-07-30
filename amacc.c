@@ -1493,7 +1493,7 @@ int *codegen(int *jitmem, int *jitmap)
                     if (elf) {
                         tmp = (int) plt_func_addr[i - OPEN];
                     } else {
-                        printf("Detected syscall other than printf! : %d\n", i);
+                        printf("Detected syscall other than printf, malloc, free, exit, div, mod! : %d\n", i);
                         fflush(stdout);
                         abort();
                     }
