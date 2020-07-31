@@ -1339,7 +1339,7 @@ static void __free_trampoline(void *ptr) {
 }
 
 static void *__memset_trampoline(void *s, int c, size_t n) {
-    return memset(s, c, n)
+    return memset(s, c, n);
 }
 
 static int __memcmp_trampoline(const void *s1, const void *s2, size_t n) {
