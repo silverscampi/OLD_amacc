@@ -374,6 +374,9 @@ void next()
                 }
                 ++p;
             } else {
+                printf("division operator '/' or '/= found - please use div(a, b) instead!\n");
+                fflush(stdout);
+                exit(1);
                 if (*p == '=') { ++p; tk = DivAssign; }
                 else tk = Div; return;
             }
@@ -422,7 +425,10 @@ void next()
         case '^': tk = Xor; return;
         case '*': if (*p == '=') { ++p; tk = MulAssign; }
                   else tk = Mul; return;
-        case '%': if (*p == '=') { ++p; tk = ModAssign; }
+        case '%': printf("modulo operator '%%' or '%%= found - please use mod(a, b) instead!\n");
+                  fflush(stdout);
+                  exit(1);
+                  if (*p == '=') { ++p; tk = ModAssign; }
                   else tk = Mod; return;
         case '[': tk = Brak; return;
         case '?': tk = Cond; return;
@@ -896,8 +902,8 @@ void gen(int *n)
     case Add:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = ADD; break;
     case Sub:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = SUB; break;
     case Mul:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MUL; break;
-    case Div:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = DIV; break;
-    case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
+    //case Div:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = DIV; break;
+    //case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
     case Syscall:
     case Func:
         c = b = (int *) n[1]; k = 0; l = 1;
@@ -1353,6 +1359,14 @@ static void *__bsearch_trampoline(const void *key, const void *base, size_t nmem
     return bsearch(key, base, nmemb, size, compar);
 }
 
+static int __div_trampoline(int a, int b) {
+    return a / b;
+}
+
+static int __mod_trampoline(int a, int b) {
+    return a % b;
+}
+
 static void __exit_trampoline(int status) {
     exit(status);
 }
@@ -1453,29 +1467,6 @@ int *codegen(int *jitmem, int *jitmap)
         case MUL:
             *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
             break;
-        case DIV:
-        case MOD:
-            // Commenting out cause ArchSim doesn't like dynamic library calls
-            printf("Detected MOD instruction!!\n");
-            fflush(stdout);
-            abort();
-            /*
-            *je++ = 0xe52d0004;                     // push {r0}
-            if (elf) {
-                tmp = (int) plt_func_addr[i - OPEN];
-            } else {
-                void *handle = dlopen("libgcc_s.so.1", 1);
-                if (!handle) fatal("libgcc_s.so.1 open error!");
-                tmp = (int) dlsym(handle, scnames[i - OPEN]);
-            }
-            *je++ = 0xe49d0004 | (1 << 12); // pop r1
-            *je++ = 0xe49d0004 | (0 << 12); // pop r0
-            *je++ = 0xe28fe000;                          // add lr, pc, #0
-            if (!imm0) imm0 = je;
-            *il++ = (int) je++ + 1;
-            *iv++ = tmp;
-            break;
-            */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1509,6 +1500,8 @@ int *codegen(int *jitmem, int *jitmap)
                     case MCPY: tmp = (int) &__memcpy_trampoline;  break;
                     case MMAP: tmp = (int) &__mmap_trampoline;    break;
                     case BSCH: tmp = (int) &__bsearch_trampoline; break;
+                    case DIV:  tmp = (int) &__div_trampoline;     break;
+                    case MOD:  tmp = (int) &__mod_trampoline;     break;
                     case EXIT: tmp = (int) &__exit_trampoline;    break;
                     default:
                         if (elf) {
@@ -2253,8 +2246,8 @@ int main(int argc, char **argv)
         "open read write close printf malloc free "
         "memset memcmp memcpy mmap "
         "dlsym bsearch __libc_start_main "
-        "dlopen __aeabi_idiv __aeabi_idivmod exit __clear_cache void main";
-
+        "dlopen div mod exit __clear_cache void main";  // removed __aeabi_idiv and __aeabi_idivmod 
+                                                        // now recognises div() and mod() as 'syscalls'
     // name vector to system call
     // must match the sequence of supported calls
     scnames = malloc(19 * sizeof(char *));
@@ -2265,8 +2258,8 @@ int main(int argc, char **argv)
     scnames[10] = "mmap";    scnames[11] = "dlsym";   scnames[12] = "bsearch";
     scnames[13] = "__libc_start_main";
     scnames[14] = "dlopen";
-    scnames[15] = "__aeabi_idiv";
-    scnames[16] = "__aeabi_idivmod";
+    scnames[15] = "div";    // removed __aeabi_idiv 
+    scnames[16] = "mod";    // and _aeabi_idivmod
     scnames[17] = "exit";
     scnames[18] = "__clear_cache";
 
