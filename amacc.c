@@ -1296,6 +1296,22 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
+static int __open_trampoline(const char *pathname, int flags) {
+    return open(pathname, flags);
+}
+
+static ssize_t __read_trampoline(int fd, void *buf, size_t count) {
+    return read(fd, buf, count);
+}
+
+static ssize_t __write_trampoline(int fd, const void *buf, size_t count) {
+    return write(fd, buf, count);
+}
+
+static int __close_trampoline(int fd) {
+    return close(fd);
+}
+
 static int __printf_trampoline(const char *fmt, ...) {
     // implemented just like glibc's printf
     va_list args;
@@ -1314,6 +1330,27 @@ static void *__malloc_trampoline(size_t size) {
 
 static void __free_trampoline(void *ptr) {
     free(ptr);
+}
+
+static void *__memset_trampoline(void *s, int c, size_t n) {
+    return memset(s, c, n)
+}
+
+static int __memcmp_trampoline(const void *s1, const void *s2, size_t n) {
+    return memcmp(s1, s2, n);
+}
+
+static void *__memcpy_trampoline(void *dest, const void *src, size_t n) {
+    return memcpy(dest, src, n);
+}
+
+static void *__mmap_trampoline(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+    return mmap(addr, len, prot, flags, fd, offset);
+}
+
+static void *__bsearch_trampoline(const void *key, const void *base, size_t nmemb, size_t size,
+                                  int (*compar)(const void *, const void *)) {
+    return bsearch(key, base, nmemb, size, compar);
 }
 
 static void __exit_trampoline(int status) {
@@ -1459,23 +1496,30 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
-                if (i == PRTF) {
-                    tmp = (int) &__printf_trampoline;
-                } else if (i == MALC) {
-                    tmp = (int) &__malloc_trampoline;
-                } else if (i == FREE) {
-                    tmp = (int) &__free_trampoline;
-                } else if (i == EXIT){
-                    tmp = (int) &__exit_trampoline;
-                } else {
-                    if (elf) {
-                        tmp = (int) plt_func_addr[i - OPEN];
-                    } else {
-                        printf("Detected syscall other than printf! : %d\n", i);
-                        fflush(stdout);
-                        abort();
-                    }
-                }        
+                switch (i) {
+                    case OPEN: tmp = (int) &__open_trampoline;    break;
+                    case READ: tmp = (int) &__read_trampoline;    break;
+                    case WRIT: tmp = (int) &__write_trampoline;   break;
+                    case CLOS: tmp = (int) &__close_trampoline;   break;
+                    case PRTF: tmp = (int) &__printf_trampoline;  break;
+                    case MALC: tmp = (int) &__malloc_trampoline;  break;
+                    case FREE: tmp = (int) &__free_trampoline;    break;
+                    case MSET: tmp = (int) &__memset_trampoline;  break;
+                    case MCMP: tmp = (int) &__memcmp_trampoline;  break;
+                    case MCPY: tmp = (int) &__memcpy_trampoline;  break;
+                    case MMAP: tmp = (int) &__mmap_trampoline;    break;
+                    case BSCH: tmp = (int) &__bsearch_trampoline; break;
+                    case EXIT: tmp = (int) &__exit_trampoline;    break;
+                    default:
+                        if (elf) {
+                            tmp = (int) plt_func_addr[i - OPEN];
+                        } else {
+                            printf("Detected syscall other than supported ones! : %d\n", i);
+                            fflush(stdout);
+                            abort();
+                        }
+                }
+
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
                 if (i > 10) die("codegen: no support for 10+ arguments");
