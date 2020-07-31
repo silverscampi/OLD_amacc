@@ -377,6 +377,9 @@ void next()
                 }
                 ++p;
             } else {
+                printf("division operator '/' or '/= found - please use div(a, b) instead!\n");
+                fflush(stdout);
+                exit(1);
                 if (*p == '=') { ++p; tk = DivAssign; }
                 else tk = Div; return;
             }
@@ -425,7 +428,10 @@ void next()
         case '^': tk = Xor; return;
         case '*': if (*p == '=') { ++p; tk = MulAssign; }
                   else tk = Mul; return;
-        case '%': if (*p == '=') { ++p; tk = ModAssign; }
+        case '%': printf("modulo operator '%%' or '%%= found - please use mod(a, b) instead!\n");
+                  fflush(stdout);
+                  exit(1);
+                  if (*p == '=') { ++p; tk = ModAssign; }
                   else tk = Mod; return;
         case '[': tk = Brak; return;
         case '?': tk = Cond; return;
@@ -899,8 +905,8 @@ void gen(int *n)
     case Add:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = ADD; break;
     case Sub:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = SUB; break;
     case Mul:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MUL; break;
-    case Div:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = DIV; break;
-    case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
+    //case Div:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = DIV; break;
+    //case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
     case Syscall:
     case Func:
         c = b = (int *) n[1]; k = 0; l = 1;
@@ -1299,6 +1305,22 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
+static int __open_trampoline(const char *pathname, int flags) {
+    return open(pathname, flags);
+}
+
+static ssize_t __read_trampoline(int fd, void *buf, size_t count) {
+    return read(fd, buf, count);
+}
+
+static ssize_t __write_trampoline(int fd, const void *buf, size_t count) {
+    return write(fd, buf, count);
+}
+
+static int __close_trampoline(int fd) {
+    return close(fd);
+}
+
 static int __printf_trampoline(const char *fmt, ...) {
     // implemented just like glibc's printf
     va_list args;
@@ -1309,6 +1331,47 @@ static int __printf_trampoline(const char *fmt, ...) {
     va_end(args);
 
     return done;
+}
+
+static void *__malloc_trampoline(size_t size) {
+    return malloc(size);
+}
+
+static void __free_trampoline(void *ptr) {
+    free(ptr);
+}
+
+static void *__memset_trampoline(void *s, int c, size_t n) {
+    return memset(s, c, n);
+}
+
+static int __memcmp_trampoline(const void *s1, const void *s2, size_t n) {
+    return memcmp(s1, s2, n);
+}
+
+static void *__memcpy_trampoline(void *dest, const void *src, size_t n) {
+    return memcpy(dest, src, n);
+}
+
+static void *__mmap_trampoline(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+    return mmap(addr, len, prot, flags, fd, offset);
+}
+
+static void *__bsearch_trampoline(const void *key, const void *base, size_t nmemb, size_t size,
+                                  int (*compar)(const void *, const void *)) {
+    return bsearch(key, base, nmemb, size, compar);
+}
+
+static int __div_trampoline(int a, int b) {
+    return a / b;
+}
+
+static int __mod_trampoline(int a, int b) {
+    return a % b;
+}
+
+static void __exit_trampoline(int status) {
+    exit(status);
 }
 
 int *codegen(int *jitmem, int *jitmap)
@@ -1409,29 +1472,6 @@ int *codegen(int *jitmem, int *jitmap)
             *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
             break;
         */
-        case DIV:
-        case MOD:
-            // Commenting out cause ArchSim doesn't like dynamic library calls
-            printf("Detected DIV/MOD instruction!!\n");
-            fflush(stdout);
-            abort();
-            /*
-            *je++ = 0xe52d0004;                     // push {r0}
-            if (elf) {
-                tmp = (int) plt_func_addr[i - OPEN];
-            } else {
-                void *handle = dlopen("libgcc_s.so.1", 1);
-                if (!handle) fatal("libgcc_s.so.1 open error!");
-                tmp = (int) dlsym(handle, scnames[i - OPEN]);
-            }
-            *je++ = 0xe49d0004 | (1 << 12); // pop r1
-            *je++ = 0xe49d0004 | (0 << 12); // pop r0
-            *je++ = 0xe28fe000;                          // add lr, pc, #0
-            if (!imm0) imm0 = je;
-            *il++ = (int) je++ + 1;
-            *iv++ = tmp;
-            break;
-            */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1489,17 +1529,32 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
-                if (i == PRTF) {
-                    tmp = (int) &__printf_trampoline;
-                } else {
-                    if (elf) {
-                        tmp = (int) plt_func_addr[i - OPEN];
-                    } else {
-                        printf("Detected syscall other than printf!!\n");
-                        fflush(stdout);
-                        abort();
-                    }
-                }        
+                switch (i) {
+                    case OPEN: tmp = (int) &__open_trampoline;    break;
+                    case READ: tmp = (int) &__read_trampoline;    break;
+                    case WRIT: tmp = (int) &__write_trampoline;   break;
+                    case CLOS: tmp = (int) &__close_trampoline;   break;
+                    case PRTF: tmp = (int) &__printf_trampoline;  break;
+                    case MALC: tmp = (int) &__malloc_trampoline;  break;
+                    case FREE: tmp = (int) &__free_trampoline;    break;
+                    case MSET: tmp = (int) &__memset_trampoline;  break;
+                    case MCMP: tmp = (int) &__memcmp_trampoline;  break;
+                    case MCPY: tmp = (int) &__memcpy_trampoline;  break;
+                    case MMAP: tmp = (int) &__mmap_trampoline;    break;
+                    case BSCH: tmp = (int) &__bsearch_trampoline; break;
+                    case DIV:  tmp = (int) &__div_trampoline;     break;
+                    case MOD:  tmp = (int) &__mod_trampoline;     break;
+                    case EXIT: tmp = (int) &__exit_trampoline;    break;
+                    default:
+                        if (elf) {
+                            tmp = (int) plt_func_addr[i - OPEN];
+                        } else {
+                            printf("Detected syscall other than supported ones! : %d\n", i);
+                            fflush(stdout);
+                            abort();
+                        }
+                }
+                      
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
                 if (i > 10) die("codegen: no support for 10+ arguments");
@@ -2268,8 +2323,8 @@ int main(int argc, char **argv)
         "open read write close printf malloc free "
         "memset memcmp memcpy mmap "
         "dlsym bsearch __libc_start_main "
-        "dlopen __aeabi_idiv __aeabi_idivmod exit __clear_cache void main";
-
+        "dlopen div mod exit __clear_cache void main"; // removed __aeabi_idiv and __aeabi_idivmod 
+                                                       // now recognises div() and mod() as 'syscalls'                 
     // name vector to system call
     // must match the sequence of supported calls
     scnames = malloc(19 * sizeof(char *));
@@ -2280,8 +2335,8 @@ int main(int argc, char **argv)
     scnames[10] = "mmap";    scnames[11] = "dlsym";   scnames[12] = "bsearch";
     scnames[13] = "__libc_start_main";
     scnames[14] = "dlopen";
-    scnames[15] = "__aeabi_idiv";
-    scnames[16] = "__aeabi_idivmod";
+    scnames[15] = "div";    // replaced __aeabi_idiv with div
+    scnames[16] = "mod";    //    and _aeabi_idivmod with mod
     scnames[17] = "exit";
     scnames[18] = "__clear_cache";
 
