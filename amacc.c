@@ -2215,14 +2215,10 @@ int main(int argc, char **argv)
         next();
     }
 
-/*
+
     int ret = elf ? elf32(poolsz, (int *) idmain->val, elf_fd) :
                     jit(poolsz,   (int *) idmain->val, argc, argv);
-*/
-    int ret = 0;
-    if (elf) {
-        elf32(poolsz, (int *) idmain->val, elf_fd);
-    }
+
 
     free(freep);
     free(freedata);
