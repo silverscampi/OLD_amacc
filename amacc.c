@@ -421,7 +421,10 @@ void next()
         case '^': tk = Xor; return;
         case '*': if (*p == '=') { ++p; tk = MulAssign; }
                   else tk = Mul; return;
-        case '%': if (*p == '=') { ++p; tk = ModAssign; }
+        case '%': printf("modulo operator '%%' or '%%= found - please use mod(a, b) instead!\n");
+                  fflush(stdout);
+                  exit(1);
+                  if (*p == '=') { ++p; tk = ModAssign; }
                   else tk = Mod; return;
         case '[': tk = Brak; return;
         case '?': tk = Cond; return;
@@ -764,12 +767,14 @@ void expr(int lev)
             else { *--n = (int) b; *--n = Div; }
             ty = INT;
             break;
+        /*
         case Mod:
             next(); expr(Inc);
             if (*n == Num && *b == Num) n[1] %= b[1];
             else { *--n = (int) b; *--n = Mod; }
             ty = INT;
             break;
+        */
         case Dot:
             ty += PTR;
         case Arrow:
@@ -896,7 +901,7 @@ void gen(int *n)
     case Sub:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = SUB; break;
     case Mul:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MUL; break;
     case Div:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = DIV; break;
-    case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
+    //case Mod:  gen((int *) n[1]); *++e = PSH; gen(n + 2); *++e = MOD; break;
     case Syscall:
     case Func:
         c = b = (int *) n[1]; k = 0; l = 1;
@@ -1295,6 +1300,10 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
+static int __mod_trampoline(int a, int b) {
+    return a % b;
+}
+
 int *codegen(int *jitmem, int *jitmap)
 {
     int i, tmp;
@@ -1392,7 +1401,7 @@ int *codegen(int *jitmem, int *jitmap)
             *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
             break;
         case DIV:
-        case MOD:
+        //case MOD:
             *je++ = 0xe52d0004;                     // push {r0}
             if (elf) {
                 tmp = (int) plt_func_addr[i - OPEN];
@@ -1428,8 +1437,12 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else if (i >= OPEN && i <= EXIT) {
-                tmp = (int) (elf ? plt_func_addr[i - OPEN] :
+                if (i == MOD && !elf) {
+                    tmp = (int) &__mod_trampoline;
+                } else {
+                    tmp = (int) (elf ? plt_func_addr[i - OPEN] :
                                    dlsym(0, scnames[i - OPEN]));
+                }
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
                 if (i > 10) die("codegen: no support for 10+ arguments");
@@ -2163,7 +2176,7 @@ int main(int argc, char **argv)
         "open read write close printf malloc free "
         "memset memcmp memcpy mmap "
         "dlsym bsearch __libc_start_main "
-        "dlopen __aeabi_idiv __aeabi_idivmod exit __clear_cache void main";
+        "dlopen __aeabi_idiv mod exit __clear_cache void main";
 
     // name vector to system call
     // must match the sequence of supported calls
@@ -2176,7 +2189,7 @@ int main(int argc, char **argv)
     scnames[13] = "__libc_start_main";
     scnames[14] = "dlopen";
     scnames[15] = "__aeabi_idiv";
-    scnames[16] = "__aeabi_idivmod";
+    scnames[16] = "mod";
     scnames[17] = "exit";
     scnames[18] = "__clear_cache";
 
