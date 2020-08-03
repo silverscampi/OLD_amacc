@@ -111,53 +111,81 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA , /*  0 */
+// FIXED LENGTH, UNCONDITIONAL, NO C SIDE EFFECTS
+    LEV , /* 0 */
+    /* LEV fetches bookkeeping info to resume previous execution.
+     * There is no POP instruction in our design, and the following pseudocode
+     * illustrates how LEV works:
+     *     if (op == LEV) { sp = bp; bp = (int *) *sp++;
+     *                      pc = (int *) *sp++; } // restore call frame and PC
+     */
+    LI = 3 ,
+    /* LI loads an integer into general register from a given memory
+     * address which is stored in general register before execution.
+     */
+    SI = 5 ,
+    /* SI stores the integer in general register into the memory whose
+     * address is stored on the top of the stack.
+     */
+    SC = 8 ,
+    /* SC stores the character in general register into the memory whose
+     * address is stored on the top of the stack.
+     */
+    PSH = 11 ,
+    /* PSH pushes the value in general register onto the stack */
+    /* Arithmetic instructions
+     * Each operator has two arguments: the first one is stored on the top
+     * of the stack while the second is stored in general register.
+     * After the calculation is done, the argument on the stack will be popped
+     * out and the result will be stored in general register.
+     * So you are not able to fetch the first argument from the stack after
+     * the calculation.
+     */
+    OR  = 13,   XOR = 16,   AND = 19,   SHL = 22,   SHR = 25, 
+    ADD = 28,   SUB = 31,   MUL = 34,
+    EQ  = 37,   NE  = 42, 
+    LT  = 47,   GT  = 52,   LE  = 57,   GE  = 62,
+
+// FIXED LENGTH - CONDITIONAL OR HAS C SIDE EFFECTS
+    LEA = 74 ,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
-     * Let's check out what a calling frame looks like before learning how
-     * to fetch arguments (Note that arguments are pushed in its calling
-     * order):
-     *
-     *     sub_function(arg1, arg2, arg3);
-     *
-     *     |    ....       | high address
-     *     +---------------+
-     *     | arg: 1        |    new_bp + 4
-     *     +---------------+
-     *     | arg: 2        |    new_bp + 3
-     *     +---------------+
-     *     | arg: 3        |    new_bp + 2
-     *     +---------------+
-     *     |return address |    new_bp + 1
-     *     +---------------+
-     *     | old BP        | <- new BP
-     *     +---------------+
-     *     | local var 1   |    new_bp - 1
-     *     +---------------+
-     *     | local var 2   |    new_bp - 2
-     *     +---------------+
-     *     |    ....       |  low address
-     *
-     * If we need to refer to arg1, we need to fetch new_bp + 4, which can not
-     * be achieved by restricted ADD instruction. Thus another special
-     * instrcution is introduced to do this: LEA <offset>.
+     * (see previous commits for more info)
      * The following pseudocode illustrates how LEA works.
      *     if (op == LEA) { ax = (int) (bp + *pc++); } // load address for arguments
      * Together with JSR, ENT, ADJ, LEV, and LEA instruction, we are able to make
      * function calls.
      */
+    ADJ = 76 , 
+    /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
+     * The following pseudocode illustrates how ADJ works:
+     *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
+     */
 
-    IMM , /*  1 */
+// VARIABLE LENGTH - CONDITIONAL AND/OR HAS C SIDE EFFECTS
+    IMM = 78 ,
     /* IMM <num> to put immediate <num> into general register */
+    BZ = 80 , /*   : conditional jump if general register is zero */
+    BNZ = 83 , /*   : conditional jump if general register is not zero */
+    ENT = 86 , /*   */
+    /* ENT <size> is called when we are about to enter the function call to
+     * "make a new calling frame". It will store the current PC value onto
+     * the stack, and save some space(<size> bytes) to store the local
+     * variables for function.
+     */
+    LC = 90 , 
+    /* LC loads a character into general register from a given memory
+     * address which is stored in general register before execution.
+     */
 
-    JMP , /*  2 */
+// CONTROL FLOW (SECOND PASS ONLY)
+    JMP = 93 , /*   */
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
      * Note that PC points to the NEXT instruction to be executed. Thus *pc
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
-
-    JSR , /*  3 */
+    JSR = 95 , /*   */
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -168,71 +196,14 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  , /*  4 : conditional jump if general register is zero */
-    BNZ , /*  5 : conditional jump if general register is not zero */
 
-    ENT , /*  6 */
-    /* ENT <size> is called when we are about to enter the function call to
-     * "make a new calling frame". It will store the current PC value onto
-     * the stack, and save some space(<size> bytes) to store the local
-     * variables for function.
-     */
-
-    ADJ , /*  7 */
-    /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
-     * The following pseudocode illustrates how ADJ works:
-     *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
-     */
-
-    LEV , /*  8 */
-    /* LEV fetches bookkeeping info to resume previous execution.
-     * There is no POP instruction in our design, and the following pseudocode
-     * illustrates how LEV works:
-     *     if (op == LEV) { sp = bp; bp = (int *) *sp++;
-     *                      pc = (int *) *sp++; } // restore call frame and PC
-     */
-
-    LI  , /*  9 */
-    /* LI loads an integer into general register from a given memory
-     * address which is stored in general register before execution.
-     */
-
-    LC  , /* 10 */
-    /* LC loads a character into general register from a given memory
-     * address which is stored in general register before execution.
-     */
-
-    SI  , /* 11 */
-    /* SI stores the integer in general register into the memory whose
-     * address is stored on the top of the stack.
-     */
-
-    SC  , /* 12 */
-    /* SC stores the character in general register into the memory whose
-     * address is stored on the top of the stack.
-     */
-
-    PSH , /* 13 */
-    /* PSH pushes the value in general register onto the stack */
-
-    OR=14  ,        XOR=17 ,        AND=20 , 
-    EQ  , /* 21 */  NE  , /* 22 */
-    LT  , /* 23 */  GT  , /* 24 */  LE  , /* 25 */ GE  , /* 26 */
-    SHL=27 ,        SHR=30 , 
-    ADD=33 ,        SUB=36 ,        MUL=39 ,
-    /* arithmetic instructions
-     * Each operator has two arguments: the first one is stored on the top
-     * of the stack while the second is stored in general register.
-     * After the calculation is done, the argument on the stack will be popped
-     * out and the result will be stored in general register.
-     * So you are not able to fetch the first argument from the stack after
-     * the calculation.
-     */
-
-    /* system call shortcuts */
+// SYSTEM CALL SHORTCUTS
     OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
+// CLEAR CACHE
     CLCA, /* clear cache, used by JIT compilation */
-    INVALID
+
+// SENTINEL 
+    INVALID = 121
 };
 
 // types
@@ -1446,32 +1417,6 @@ int *codegen(int *jitmem, int *jitmap)
         case PSH:
             *je++ = 0xe52d0004;                       // push {r0}
             break;
-        /*
-        case OR:
-            *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
-            break;
-        case XOR:
-            *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
-            break;
-        case AND:
-            *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
-            break;
-        case SHL:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
-            break;
-        case SHR:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
-            break;
-        case ADD:
-            *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
-            break;
-        case SUB:
-            *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
-            break;
-        case MUL:
-            *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
-            break;
-        */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -2349,9 +2294,10 @@ int main(int argc, char **argv)
     }
 
     // add library to symbol table
-    for (i = OPEN; i < INVALID; i++) {
+    for (i = OPEN; i < CLCA; i++) {
         next(); id->class = Syscall; id->type = INT; id->val = i;
     }
+    next(); id->class = Syscall; id->type = INT; id->val = INVALID;
     next(); id->tk = Char; // handle void type
     next();
     struct ident_s *idmain = id; // keep track of main
