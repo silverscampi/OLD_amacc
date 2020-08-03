@@ -349,8 +349,8 @@ void next()
                     printf("%8.4s",
                            & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
                              "LI   LC   SI   SC   PSH  "
-                             "OR   XOR  AND  EQ   NE   LT   GT   LE   GE   "
-                             "SHL  SHR  ADD  SUB  MUL  "
+                             "OR             XOR            AND  EQ   NE   LT   GT   LE   GE   "
+                             "SHL            SHR            ADD            SUB            MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
@@ -1482,12 +1482,12 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         default:
             if ((OR <= i && i <= AND) || (SHL <= i && i <= MUL)) {
-                printf("\ntemplate JIT instruction:\t%d\n", i);
-                int *pje = je;
-                printf("current je: %p\n", pje);
+                //printf("\ntemplate JIT instruction:\t%d\n", i);
+                //int *pje = je;
+                //printf("current je: %p\n", pje);
                 fflush(stdout);
             
-                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
                 register int *tbp asm("r1") = templ_buf;
                 register int *cbp asm("r2") = je;
                 register int  ir asm("r3") = i;  
@@ -1505,16 +1505,18 @@ int *codegen(int *jitmem, int *jitmap)
                     : "memory"
                 );
                 je = cbp;
-                printf("asm done.\nnew je: %p\n", je);
-                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                //printf("asm done.\nnew je: %p\n", je);
+                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
                 // all instrs here write just +2 words to emitted code at the moment, so the new je should be +64 to old je.
-                printf("new je == old je + 64? ");
+                //printf("new je == old je + 64? ");
+                /*
                 if (je == pje + 2) {
                     printf("TRUE\n");
                 } else {
                     printf("FALSE\n");   
                 }
                 fflush(stdout);
+                */
             }
 
 
