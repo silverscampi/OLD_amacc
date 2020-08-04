@@ -147,7 +147,7 @@ enum {
     LT  = 47,   GT  = 52,   LE  = 57,   GE  = 62,
 
 // FIXED LENGTH - CONDITIONAL OR HAS C SIDE EFFECTS
-    LEA = 74 ,
+    LEA = 67 ,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * (see previous commits for more info)
      * The following pseudocode illustrates how LEA works.
@@ -155,37 +155,37 @@ enum {
      * Together with JSR, ENT, ADJ, LEV, and LEA instruction, we are able to make
      * function calls.
      */
-    ADJ = 76 , 
+    ADJ = 69 , 
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
 // VARIABLE LENGTH - CONDITIONAL AND/OR HAS C SIDE EFFECTS
-    IMM = 78 ,
+    IMM = 71 ,
     /* IMM <num> to put immediate <num> into general register */
-    BZ = 80 , /*   : conditional jump if general register is zero */
-    BNZ = 83 , /*   : conditional jump if general register is not zero */
-    ENT = 86 , /*   */
+    BZ = 73 , /*   : conditional jump if general register is zero */
+    BNZ = 76 , /*   : conditional jump if general register is not zero */
+    ENT = 79 , /*   */
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
-    LC = 90 , 
+    LC = 83 , 
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
 // CONTROL FLOW (SECOND PASS ONLY)
-    JMP = 93 , /*   */
+    JMP = 87 , /* this should be 86 but archsim crashes if it's 86??????  */
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
      * Note that PC points to the NEXT instruction to be executed. Thus *pc
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
-    JSR = 95 , /*   */
+    JSR = 89 , /*   */
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -198,12 +198,12 @@ enum {
 
 
 // SYSTEM CALL SHORTCUTS
-    OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
+    OPEN=91,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
 // CLEAR CACHE
     CLCA, /* clear cache, used by JIT compilation */
 
 // SENTINEL 
-    INVALID = 121
+    INVALID = 116
 };
 
 // types
