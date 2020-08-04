@@ -1409,10 +1409,12 @@ int *codegen(int *jitmem, int *jitmap)
         case LEV:
             *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
             break;
+        
         */
         case LI:
             *je++ = 0xe5900000;                  // ldr r0, [r0]
             break;
+        
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
@@ -1427,6 +1429,7 @@ int *codegen(int *jitmem, int *jitmap)
         case PSH:
             *je++ = 0xe52d0004;                       // push {r0}
             break;
+            
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1436,13 +1439,14 @@ int *codegen(int *jitmem, int *jitmap)
                                                     // svc 0
             break;
         default:
-            if ((i==LEV)||(i==SI)||(i==SC)||(OR <= i && i <= MUL)) {
+            if ((i==LEV)||(i==SI)||(i==SC)||(OR <= i && i <= MUL)) { // only 2 word emitters
+             // if (LEV <= i && i <= MUL) {                          // including 1 word emitters
                 printf("\ntemplate JIT instruction:\t%d\n", i);
-                //int *pje = je;
-                //printf("current je: %p\n", pje);
+                int *pje = je;
+                printf("current je: %p\n", pje);
                 fflush(stdout);
             
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
                 register int *tbp asm("r1") = templ_buf;
                 register int *cbp asm("r2") = je;
                 register int  ir asm("r3") = i;  
@@ -1460,18 +1464,17 @@ int *codegen(int *jitmem, int *jitmap)
                     : "memory"
                 );
                 je = cbp;
-                //printf("asm done.\nnew je: %p\n", je);
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-                // all instrs here write just +2 words to emitted code at the moment, so the new je should be +64 to old je.
-                //printf("new je == old je + 64? ");
-                /*
+                printf("asm done.\nnew je: %p\n", je);
+                printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                // all instrs emit 2 words, except LI and PSH which only emit 1. 
+                printf("new je == old je + 64? ");
                 if (je == pje + 2) {
                     printf("TRUE\n");
                 } else {
                     printf("FALSE\n");   
                 }
                 fflush(stdout);
-                */
+                
             }
 
 
