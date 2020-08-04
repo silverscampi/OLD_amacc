@@ -178,14 +178,14 @@ enum {
      */
 
 // CONTROL FLOW (SECOND PASS ONLY)
-    JMP = 86 , /*   */
+    JMP = 87 , /* should be 86, because LC emits max 2 words, but archsim crashes when it's 86.... */
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
      * Note that PC points to the NEXT instruction to be executed. Thus *pc
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
-    JSR = 88 , /*   */
+    JSR = 89 , /*   */
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -198,12 +198,12 @@ enum {
 
 
 // SYSTEM CALL SHORTCUTS
-    OPEN=90,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
+    OPEN=91,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
 // CLEAR CACHE
     CLCA, /* clear cache, used by JIT compilation */
 
 // SENTINEL 
-    INVALID = 115
+    INVALID = 116
 };
 
 // types
@@ -1409,10 +1409,10 @@ int *codegen(int *jitmem, int *jitmap)
         case LEV:
             *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
             break;
+        */
         case LI:
             *je++ = 0xe5900000;                  // ldr r0, [r0]
             break;
-        */
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
@@ -1423,10 +1423,10 @@ int *codegen(int *jitmem, int *jitmap)
         case SC:
             *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
             break;
+        */
         case PSH:
             *je++ = 0xe52d0004;                       // push {r0}
             break;
-        */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1436,7 +1436,7 @@ int *codegen(int *jitmem, int *jitmap)
                                                     // svc 0
             break;
         default:
-            if (LEV <= i && i <= MUL) {
+            if ((i==LEV)||(i==SI)||(i==SC)||(OR <= i && i <= MUL)) {
                 printf("\ntemplate JIT instruction:\t%d\n", i);
                 //int *pje = je;
                 //printf("current je: %p\n", pje);
