@@ -1387,40 +1387,40 @@ int *codegen(int *jitmem, int *jitmap)
         case SHR:
         case ADD:
         case SUB:
-        case MUL:
+        case MUL: ;
             //printf("\ntemplate JIT instruction:\t%d\n", i);
-                //int *pje = je;
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-                register int *tbp asm("r1") = templ_buf;
-                register int *cbp asm("r2") = je;
-                register int  ir asm("r3") = i;  
-                __asm__ __volatile__ (
-                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+            //int *pje = je;
+            //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+            register int *tbp asm("r1") = templ_buf;
+            register int *cbp asm("r2") = je;
+            register int  ir asm("r3") = i;  
+            __asm__ __volatile__ (
+                "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
 
-                    //outputs
-                    : "+r" (cbp)
-                    
-                    //inputs
-                    : "r" (tbp),
-                      "r" (ir)
-                    
-                    //clobbers
-                    : "memory"
-                );
-                je = cbp;
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-                // all instrs emit 2 words, except LI and PSH which only emit 1. 
-                //printf("new je == old je + 64? ");
-                /*
-                if (je == pje + 2) {
-                    printf("TRUE\n");
-                } else {
-                    printf("FALSE\n");   
-                }
-                fflush(stdout);
-                */
-               break;
-               
+                //outputs
+                : "+r" (cbp)
+                
+                //inputs
+                : "r" (tbp),
+                  "r" (ir)
+                
+                //clobbers
+                : "memory"
+            );
+            je = cbp;
+            //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+            // all instrs emit 2 words, except LI and PSH which only emit 1. 
+            //printf("new je == old je + 64? ");
+            /*
+            if (je == pje + 2) {
+                printf("TRUE\n");
+            } else {
+                printf("FALSE\n");   
+            }
+            fflush(stdout);
+            */
+            break;
+
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
