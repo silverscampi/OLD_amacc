@@ -1375,7 +1375,52 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
         switch (i) {
-        
+        case LEV:
+        case LI:
+        case SI:
+        case SC:
+        case PSH:
+        case OR:
+        case XOR:
+        case AND:
+        case SHL:
+        case SHR:
+        case ADD:
+        case SUB:
+        case MUL:
+            //printf("\ntemplate JIT instruction:\t%d\n", i);
+                //int *pje = je;
+                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                register int *tbp asm("r1") = templ_buf;
+                register int *cbp asm("r2") = je;
+                register int  ir asm("r3") = i;  
+                __asm__ __volatile__ (
+                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+
+                    //outputs
+                    : "+r" (cbp)
+                    
+                    //inputs
+                    : "r" (tbp),
+                      "r" (ir)
+                    
+                    //clobbers
+                    : "memory"
+                );
+                je = cbp;
+                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+                // all instrs emit 2 words, except LI and PSH which only emit 1. 
+                //printf("new je == old je + 64? ");
+                /*
+                if (je == pje + 2) {
+                    printf("TRUE\n");
+                } else {
+                    printf("FALSE\n");   
+                }
+                fflush(stdout);
+                */
+               break;
+               
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
@@ -1410,29 +1455,9 @@ int *codegen(int *jitmem, int *jitmap)
         case ADJ:
             *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
             break;
-        /*
-        case LEV:
-            *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
-            break;
-        
-        case LI:
-            *je++ = 0xe5900000;                  // ldr r0, [r0]
-            break;
-        */
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
-        /*
-        case SI:
-            *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
-            break;
-        case SC:
-            *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
-            break;
-        case PSH:
-            *je++ = 0xe52d0004;                       // push {r0}
-            break;
-            */
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
                                                     // ldr r1, [sp]
@@ -1442,47 +1467,7 @@ int *codegen(int *jitmem, int *jitmap)
                                                     // svc 0
             break;
         default:
-            //if ((i==LEV)||(i==SI)||(i==SC)||(OR <= i && i <= MUL)) { // only 2 word emitters
-            if (LEV <= i && i <= MUL) {                          // including 1 word emitters
-                //printf("\ntemplate JIT instruction:\t%d\n", i);
-                //int *pje = je;
-                //printf("current je: %p\n", pje);
-                //fflush(stdout);
-            
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-                register int *tbp asm("r1") = templ_buf;
-                register int *cbp asm("r2") = je;
-                register int  ir asm("r3") = i;  
-                __asm__ __volatile__ (
-                    "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
-
-                    //outputs
-                    : "+r" (cbp)
-                    
-                    //inputs
-                    : "r" (tbp),
-                      "r" (ir)
-                    
-                    //clobbers
-                    : "memory"
-                );
-                je = cbp;
-                //printf("asm done.\nnew je: %p\n", je);
-                //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-                // all instrs emit 2 words, except LI and PSH which only emit 1. 
-                //printf("new je == old je + 64? ");
-                /*
-                if (je == pje + 2) {
-                    printf("TRUE\n");
-                } else {
-                    printf("FALSE\n");   
-                }
-                fflush(stdout);
-                */
-            }
-
-
-            else if (EQ <= i && i <= GE) {
+            if (EQ <= i && i <= GE) {
                 *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                 if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
                 else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
