@@ -1391,11 +1391,11 @@ int *codegen(int *jitmem, int *jitmap)
             //printf("\ntemplate JIT instruction:\t%d\n", i);
             //int *pje = je;
             //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-            register int *tbp asm("r1") = templ_buf;
-            register int *cbp asm("r2") = je;
-            register int  ir asm("r3") = i;  
+            register int *cbp asm("r4") = je;
+            register int *tbp asm("r8") = templ_buf;
+            register int  ir asm("r2") = i;  
             __asm__ __volatile__ (
-                "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+                "mrc    p3, #0, r4, cr0, cr0"     // tmplcpy
 
                 //outputs
                 : "+r" (cbp)
