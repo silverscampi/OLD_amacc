@@ -54,6 +54,9 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
+// template buffer
+int templ_buf[20] = {0};
+
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -212,15 +215,15 @@ enum {
     PSH , /* 13 */
     /* PSH pushes the value in general register onto the stack */
 
-    OR  , /* 14 */  XOR , /* 15 */  AND , /* 16 */
-    EQ  , /* 17 */  NE  , /* 18 */
-    LT  , /* 19 */  GT  , /* 20 */  LE  , /* 21 */ GE  , /* 22 */
-    SHL , /* 23 */  SHR , /* 24 */
-    ADD , /* 25 */  SUB , /* 26 */  MUL , /* 27 */
+    OR=14  ,        XOR=17 ,        AND=20 , 
+    EQ  , /* 21 */  NE  , /* 22 */
+    LT  , /* 23 */  GT  , /* 24 */  LE  , /* 25 */ GE  , /* 26 */
+    SHL=27 ,        SHR=30 , 
+    ADD=33 ,        SUB=36 ,        MUL=39 ,
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
-     * After the calculation is done, the argument on the stack will be poped
+     * After the calculation is done, the argument on the stack will be popped
      * out and the result will be stored in general register.
      * So you are not able to fetch the first argument from the stack after
      * the calculation.
@@ -346,8 +349,8 @@ void next()
                     printf("%8.4s",
                            & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
                              "LI   LC   SI   SC   PSH  "
-                             "OR   XOR  AND  EQ   NE   LT   GT   LE   GE   "
-                             "SHL  SHR  ADD  SUB  MUL  "
+                             "OR             XOR            AND  EQ   NE   LT   GT   LE   GE   "
+                             "SHL            SHR            ADD            SUB            MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
@@ -1374,7 +1377,8 @@ static void __exit_trampoline(int status) {
 int *codegen(int *jitmem, int *jitmap)
 {
     int i, tmp;
-    int *je, *tje;    // current position in emitted native code
+    register int *je asm("r4");
+    int /* *je, */ *tje;    // current position in emitted native code
     int *immloc, *il;
 
     immloc = il = malloc(1024 * 4);
@@ -1443,9 +1447,25 @@ int *codegen(int *jitmem, int *jitmap)
         case PSH:
             *je++ = 0xe52d0004;                       // push {r0}
             break;
-        case OR:
-            *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
-            break;
+        case OR: ;
+        //register int *cbp asm("r2") = je;
+         // cbp is r4
+             register int *tbp asm("r5") = templ_buf;
+             register int  ir asm("r6") = i;  
+                __asm__ __volatile__ (
+                    "mrc    p3, #0, %[cbp], cr0, cr0"     // tmplcpy
+
+                    //outputs
+                    : [cbp] "+r" (je)
+                    
+                    //inputs
+                    : "r" (tbp),
+                      "r" (ir)
+                    
+                    //clobbers
+                    : "memory"
+                );
+                //je = cbp;
         case XOR:
             *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
             break;
@@ -1512,7 +1532,7 @@ int *codegen(int *jitmem, int *jitmap)
                             abort();
                         }
                 }
-
+                      
                 if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
                 i = *pc;
                 if (i > 10) die("codegen: no support for 10+ arguments");
@@ -2238,7 +2258,14 @@ int main(int argc, char **argv)
     memset(ast, 0, poolsz);
     ast = (int *) ((int) ast + poolsz); // abstract syntax tree is most efficiently built as a stack
 
-    /* Resgister keywords and system calls to symbol stack
+
+    // populate template buffer
+    // OR
+    templ_buf[OR]   = 2;
+    templ_buf[OR+1] = 0xe49d1004;
+    templ_buf[OR+2] = 0xe1810000;
+
+    /* Register keywords and system calls to symbol stack
      * must match the sequence of enum
      */
     p = "break case char default else enum if int return "
@@ -2246,8 +2273,8 @@ int main(int argc, char **argv)
         "open read write close printf malloc free "
         "memset memcmp memcpy mmap "
         "dlsym bsearch __libc_start_main "
-        "dlopen div mod exit __clear_cache void main";  // removed __aeabi_idiv and __aeabi_idivmod 
-                                                        // now recognises div() and mod() as 'syscalls'
+        "dlopen div mod exit __clear_cache void main"; // removed __aeabi_idiv and __aeabi_idivmod 
+                                                       // now recognises div() and mod() as 'syscalls'                 
     // name vector to system call
     // must match the sequence of supported calls
     scnames = malloc(19 * sizeof(char *));
@@ -2258,8 +2285,8 @@ int main(int argc, char **argv)
     scnames[10] = "mmap";    scnames[11] = "dlsym";   scnames[12] = "bsearch";
     scnames[13] = "__libc_start_main";
     scnames[14] = "dlopen";
-    scnames[15] = "div";    // removed __aeabi_idiv 
-    scnames[16] = "mod";    // and _aeabi_idivmod
+    scnames[15] = "div";    // replaced __aeabi_idiv with div
+    scnames[16] = "mod";    //    and _aeabi_idivmod with mod
     scnames[17] = "exit";
     scnames[18] = "__clear_cache";
 
