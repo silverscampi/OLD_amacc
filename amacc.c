@@ -1,3 +1,31 @@
+asm (".equ ZZ_r0, 0\n"
+".equ ZZ_r1, 1\n"
+".equ ZZ_r2, 2\n"
+".equ ZZ_r3, 3\n"
+".equ ZZ_r4, 4\n"
+".equ ZZ_r5, 5\n"
+".equ ZZ_r6, 6\n"
+".equ ZZ_r7, 7\n");
+
+asm (".macro tplcpy a, b, c\n"
+      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n"
+      ".endm\n");
+
+/*
+asm (".equ ZZ_r0, 0\n"
+     ".equ ZZ_r1, 1\n"
+     ".equ ZZ_r2, 2\n"
+     ".equ ZZ_r3, 3\n"
+     ".equ ZZ_r4, 4\n"
+     ".equ ZZ_r5, 5\n"
+     ".equ ZZ_r6, 6\n"
+     ".equ ZZ_r7, 7\n");
+
+asm (".macro tplcpy a, b, c\n"
+     ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n"
+     ".endm\n");
+*/
+
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
  * executables or running via just-in-time compilation on 32-bit ARM
@@ -1286,73 +1314,12 @@ void die(char *msg) { printf("%s\n", msg); exit(-1); }
 int reloc_imm(int offset) { return ((((offset) - 8) >> 2) & 0x00ffffff); }
 int reloc_bl(int offset) { return 0xeb000000 | reloc_imm(offset); }
 
-static int __open_trampoline(const char *pathname, int flags) {
-    return open(pathname, flags);
-}
-
-static ssize_t __read_trampoline(int fd, void *buf, size_t count) {
-    return read(fd, buf, count);
-}
-
-static ssize_t __write_trampoline(int fd, const void *buf, size_t count) {
-    return write(fd, buf, count);
-}
-
-static int __close_trampoline(int fd) {
-    return close(fd);
-}
-
-static int __printf_trampoline(const char *fmt, ...) {
-    // implemented just like glibc's printf
-    va_list args;
-    int done;
-
-    va_start(args, fmt);
-    done = vfprintf(stdout, fmt, args);
-    va_end(args);
-
-    return done;
-}
-
-static void *__malloc_trampoline(size_t size) {
-    return malloc(size);
-}
-
-static void __free_trampoline(void *ptr) {
-    free(ptr);
-}
-
-static void *__memset_trampoline(void *s, int c, size_t n) {
-    return memset(s, c, n);
-}
-
-static int __memcmp_trampoline(const void *s1, const void *s2, size_t n) {
-    return memcmp(s1, s2, n);
-}
-
-static void *__memcpy_trampoline(void *dest, const void *src, size_t n) {
-    return memcpy(dest, src, n);
-}
-
-static void *__mmap_trampoline(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
-    return mmap(addr, len, prot, flags, fd, offset);
-}
-
-static void *__bsearch_trampoline(const void *key, const void *base, size_t nmemb, size_t size,
-                                  int (*compar)(const void *, const void *)) {
-    return bsearch(key, base, nmemb, size, compar);
-}
-
 static int __div_trampoline(int a, int b) {
     return a / b;
 }
 
 static int __mod_trampoline(int a, int b) {
     return a % b;
-}
-
-static void __exit_trampoline(int status) {
-    exit(status);
 }
 
 int *codegen(int *jitmem, int *jitmap)
@@ -1391,34 +1358,31 @@ int *codegen(int *jitmem, int *jitmap)
             //printf("\ntemplate JIT instruction:\t%d\n", i);
             //int *pje = je;
             //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-            register int *tbp asm("r1") = templ_buf;
-            register int *cbp asm("r2") = je;
-            register int  ir asm("r3") = i;  
+            //fflush(stdout);
             __asm__ __volatile__ (
-                "mrc    p3, #0, r1, cr0, cr0"     // tmplcpy
+                "tplcpy %0, %1, %2\n"
 
                 //outputs
-                : "+r" (cbp)
+                : "+r" (je)
                 
                 //inputs
-                : "r" (tbp),
-                  "r" (ir)
+                : "r" (templ_buf),
+                  "r" (i)
                 
                 //clobbers
                 : "memory"
             );
-            je = cbp;
             //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
             // all instrs emit 2 words, except LI and PSH which only emit 1. 
             //printf("new je == old je + 64? ");
-            /*
-            if (je == pje + 2) {
+            
+            /* if (je == pje + 2) {
                 printf("TRUE\n");
             } else {
                 printf("FALSE\n");   
             }
-            fflush(stdout);
-            */
+            fflush(stdout); */
+            
             break;
 
         case LEA:
@@ -1479,21 +1443,21 @@ int *codegen(int *jitmem, int *jitmap)
             }
             else if (i >= OPEN && i <= EXIT) {
                 switch (i) {
-                    case OPEN: tmp = (int) &__open_trampoline;    break;
-                    case READ: tmp = (int) &__read_trampoline;    break;
-                    case WRIT: tmp = (int) &__write_trampoline;   break;
-                    case CLOS: tmp = (int) &__close_trampoline;   break;
-                    case PRTF: tmp = (int) &__printf_trampoline;  break;
-                    case MALC: tmp = (int) &__malloc_trampoline;  break;
-                    case FREE: tmp = (int) &__free_trampoline;    break;
-                    case MSET: tmp = (int) &__memset_trampoline;  break;
-                    case MCMP: tmp = (int) &__memcmp_trampoline;  break;
-                    case MCPY: tmp = (int) &__memcpy_trampoline;  break;
-                    case MMAP: tmp = (int) &__mmap_trampoline;    break;
-                    case BSCH: tmp = (int) &__bsearch_trampoline; break;
+                    case OPEN: tmp = (int) &open;    break;
+                    case READ: tmp = (int) &read;    break;
+                    case WRIT: tmp = (int) &write;   break;
+                    case CLOS: tmp = (int) &close;   break;
+                    case PRTF: tmp = (int) &printf;  break;
+                    case MALC: tmp = (int) &malloc;  break;
+                    case FREE: tmp = (int) &free;    break;
+                    case MSET: tmp = (int) &memset;  break;
+                    case MCMP: tmp = (int) &memcmp;  break;
+                    case MCPY: tmp = (int) &memcpy;  break;
+                    case MMAP: tmp = (int) &mmap;    break;
+                    case BSCH: tmp = (int) &bsearch; break;
                     case DIV:  tmp = (int) &__div_trampoline;     break;
                     case MOD:  tmp = (int) &__mod_trampoline;     break;
-                    case EXIT: tmp = (int) &__exit_trampoline;    break;
+                    case EXIT: tmp = (int) &exit;    break;
                     default:
                         if (elf) {
                             tmp = (int) plt_func_addr[i - OPEN];
