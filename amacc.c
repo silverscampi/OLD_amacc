@@ -1,18 +1,4 @@
 asm (".equ ZZ_r0, 0\n"
-".equ ZZ_r1, 1\n"
-".equ ZZ_r2, 2\n"
-".equ ZZ_r3, 3\n"
-".equ ZZ_r4, 4\n"
-".equ ZZ_r5, 5\n"
-".equ ZZ_r6, 6\n"
-".equ ZZ_r7, 7\n");
-
-asm (".macro tplcpy a, b, c\n"
-      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n"
-      ".endm\n");
-
-/*
-asm (".equ ZZ_r0, 0\n"
      ".equ ZZ_r1, 1\n"
      ".equ ZZ_r2, 2\n"
      ".equ ZZ_r3, 3\n"
@@ -24,7 +10,6 @@ asm (".equ ZZ_r0, 0\n"
 asm (".macro tplcpy a, b, c\n"
      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n"
      ".endm\n");
-*/
 
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
@@ -83,7 +68,34 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[42] = {0};
+int templ_buf[37] = {
+    //LEV
+    2, 0xe28bd000, 0xe8bd8800,
+    //LI
+    1, 0xe5900000,
+    //SI
+    2, 0xe49d1004, 0xe5810000,
+    //SC
+    2, 0xe49d1004, 0xe5c10000,
+    //PSH
+    1, 0xe52d0004,
+    //OR
+    2, 0xe49d1004, 0xe1810000,
+    //XOR
+    2, 0xe49d1004, 0xe0210000,
+    //AND
+    2, 0xe49d1004, 0xe0010000,
+    //SHL
+    2, 0xe49d1004, 0xe1a00011,
+    //SHR
+    2, 0xe49d1004, 0xe1a00051,
+    //ADD
+    2, 0xe49d1004, 0xe0800001,
+    //SUB
+    2, 0xe49d1004, 0xe0410000,
+    //MUL
+    2, 0xe49d1004, 0xe0000091
+};
 
 // identifier
 struct ident_s {
@@ -2193,58 +2205,6 @@ int main(int argc, char **argv)
     memset(ast, 0, poolsz);
     ast = (int *) ((int) ast + poolsz); // abstract syntax tree is most efficiently built as a stack
 
-
-    // populate template buffer
-    // LEV
-    templ_buf[LEV]  = 2;
-    templ_buf[LEV+1]= 0xe28bd000;
-    templ_buf[LEV+2]= 0xe8bd8800;
-    // LI
-    templ_buf[LI]   = 1;
-    templ_buf[LI+1] = 0xe5900000;
-    // SI
-    templ_buf[SI]   = 2;
-    templ_buf[SI+1] = 0xe49d1004;
-    templ_buf[SI+2] = 0xe5810000;
-    // SC
-    templ_buf[SC]   = 2;
-    templ_buf[SC+1] = 0xe49d1004;
-    templ_buf[SC+2] = 0xe5c10000;
-    // PSH
-    templ_buf[PSH]  = 1;
-    templ_buf[PSH+1]= 0xe52d0004;
-    // OR
-    templ_buf[OR]   = 2;
-    templ_buf[OR+1] = 0xe49d1004;
-    templ_buf[OR+2] = 0xe1810000;
-    // XOR
-    templ_buf[XOR]  = 2;
-    templ_buf[XOR+1]= 0xe49d1004;
-    templ_buf[XOR+2]= 0xe0210000;
-    // AND
-    templ_buf[AND]  = 2;
-    templ_buf[AND+1]= 0xe49d1004;
-    templ_buf[AND+2]= 0xe0010000;
-    // SHL
-    templ_buf[SHL]  = 2;
-    templ_buf[SHL+1]= 0xe49d1004;
-    templ_buf[SHL+2]= 0xe1a00011;
-    // SHR
-    templ_buf[SHR]  = 2;
-    templ_buf[SHR+1]= 0xe49d1004;
-    templ_buf[SHR+2]= 0xe1a00051;
-    // ADD
-    templ_buf[ADD]  = 2;
-    templ_buf[ADD+1]= 0xe49d1004;
-    templ_buf[ADD+2]= 0xe0800001;
-    // SUB
-    templ_buf[SUB]  = 2;
-    templ_buf[SUB+1]= 0xe49d1004;
-    templ_buf[SUB+2]= 0xe0410000;
-    // MUL
-    templ_buf[MUL]  = 2;
-    templ_buf[MUL+1]= 0xe49d1004;
-    templ_buf[MUL+2]= 0xe0000091;
 
     /* Register keywords and system calls to symbol stack
      * must match the sequence of enum
