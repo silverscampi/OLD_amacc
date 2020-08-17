@@ -1,15 +1,15 @@
-asm (".equ ZZ_r0, 0\n"
-     ".equ ZZ_r1, 1\n"
-     ".equ ZZ_r2, 2\n"
-     ".equ ZZ_r3, 3\n"
-     ".equ ZZ_r4, 4\n"
-     ".equ ZZ_r5, 5\n"
-     ".equ ZZ_r6, 6\n"
-     ".equ ZZ_r7, 7\n");
+asm (".equ ZZ_r0, 0\n\t"
+     ".equ ZZ_r1, 1\n\t"
+     ".equ ZZ_r2, 2\n\t"
+     ".equ ZZ_r3, 3\n\t"
+     ".equ ZZ_r4, 4\n\t"
+     ".equ ZZ_r5, 5\n\t"
+     ".equ ZZ_r6, 6\n\t"
+     ".equ ZZ_r7, 7\n\t");
 
-asm (".macro tplcpy a, b, c\n"
-     ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n"
-     ".endm\n");
+asm (".macro tplbrc a, b, c\n\t"
+     ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
 
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
@@ -68,7 +68,11 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-
+int templ_buf[1] = {
+    //BZ,BNZ
+    0xe3500000
+};
+int *tbp_brc = templ_buf;
 
 // identifier
 struct ident_s {
@@ -1342,7 +1346,17 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case BZ:
         case BNZ:
-            *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
+            __asm__ __volatile__ (
+                "tplbrc %0, %1, %2\n\t"
+                //outputs
+                : "+r" (je)
+                //inputs
+                : "r" (tbp_brc),
+                  "r" (i) //unused atm (could be for second pass)
+                //clobbers
+                : "memory"
+            );
+            pc++; je++;
             break;
         case ENT:
             *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
