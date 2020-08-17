@@ -68,34 +68,7 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[37] = {
-    //LEV
-    2, 0xe28bd000, 0xe8bd8800,
-    //LI
-    1, 0xe5900000,
-    //SI
-    2, 0xe49d1004, 0xe5810000,
-    //SC
-    2, 0xe49d1004, 0xe5c10000,
-    //PSH
-    1, 0xe52d0004,
-    //OR
-    2, 0xe49d1004, 0xe1810000,
-    //XOR
-    2, 0xe49d1004, 0xe0210000,
-    //AND
-    2, 0xe49d1004, 0xe0010000,
-    //SHL
-    2, 0xe49d1004, 0xe1a00011,
-    //SHR
-    2, 0xe49d1004, 0xe1a00051,
-    //ADD
-    2, 0xe49d1004, 0xe0800001,
-    //SUB
-    2, 0xe49d1004, 0xe0410000,
-    //MUL
-    2, 0xe49d1004, 0xe0000091
-};
+
 
 // identifier
 struct ident_s {
@@ -1354,49 +1327,6 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
         switch (i) {
-        case LEV:
-        case LI:
-        case SI:
-        case SC:
-        case PSH:
-        case OR:
-        case XOR:
-        case AND:
-        case SHL:
-        case SHR:
-        case ADD:
-        case SUB:
-        case MUL: ;
-            //printf("\ntemplate JIT instruction:\t%d\n", i);
-            //int *pje = je;
-            //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-            //fflush(stdout);
-            __asm__ __volatile__ (
-                "tplcpy %0, %1, %2\n"
-
-                //outputs
-                : "+r" (je)
-                
-                //inputs
-                : "r" (templ_buf),
-                  "r" (i)
-                
-                //clobbers
-                : "memory"
-            );
-            //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-            // all instrs emit 2 words, except LI and PSH which only emit 1. 
-            //printf("new je == old je + 64? ");
-            
-            /* if (je == pje + 2) {
-                printf("TRUE\n");
-            } else {
-                printf("FALSE\n");   
-            }
-            fflush(stdout); */
-            
-            break;
-
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
@@ -1431,8 +1361,47 @@ int *codegen(int *jitmem, int *jitmap)
         case ADJ:
             *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
             break;
+        case LEV:
+            *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
+            break;
+        case LI:
+            *je++ = 0xe5900000;                  // ldr r0, [r0]
+            break;
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
+            break;
+        case SI:
+            *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
+            break;
+        case SC:
+            *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
+            break;
+        case PSH:
+            *je++ = 0xe52d0004;                       // push {r0}
+            break;
+        case OR:
+            *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
+            break;
+        case XOR:
+            *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
+            break;
+        case AND:
+            *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
+            break;
+        case SHL:
+            *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
+            break;
+        case SHR:
+            *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
+            break;
+        case ADD:
+            *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
+            break;
+        case SUB:
+            *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
+            break;
+        case MUL:
+            *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
             break;
         case CLCA:
             *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
