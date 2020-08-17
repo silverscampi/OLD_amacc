@@ -124,27 +124,19 @@ enum {
  *     pc = text;
  */
 enum {
-// FIXED LENGTH, UNCONDITIONAL, NO C SIDE EFFECTS
-    LEV , /* 0 */
+// [FIX]
+    LEV , // =0
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
      *     if (op == LEV) { sp = bp; bp = (int *) *sp++;
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
-    LI = 3 ,
+    LI = 3,
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
-    SI = 5 ,
-    /* SI stores the integer in general register into the memory whose
-     * address is stored on the top of the stack.
-     */
-    SC = 8 ,
-    /* SC stores the character in general register into the memory whose
-     * address is stored on the top of the stack.
-     */
-    PSH = 11 ,
+    PSH = 5,
     /* PSH pushes the value in general register onto the stack */
     /* Arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
@@ -154,13 +146,24 @@ enum {
      * So you are not able to fetch the first argument from the stack after
      * the calculation.
      */
-    OR  = 13,   XOR = 16,   AND = 19,   SHL = 22,   SHR = 25, 
-    ADD = 28,   SUB = 31,   MUL = 34,
-    EQ  = 37,   NE  = 42, 
-    LT  = 47,   GT  = 52,   LE  = 57,   GE  = 62,
+    CLCA = 7, /* clear cache, used by JIT compilation */
 
-// FIXED LENGTH - CONDITIONAL OR HAS C SIDE EFFECTS
-    LEA = 67 ,
+// [POP]
+    SI = 14,
+    /* SI stores the integer in general register into the memory whose
+     * address is stored on the top of the stack.
+     */
+    SC  ,
+    /* SC stores the character in general register into the memory whose
+     * address is stored on the top of the stack.
+     */
+    OR ,   XOR,   AND ,   SHL,   SHR , 
+    ADD,   SUB,   MUL ,
+    EQ ,   NE , 
+    LT  ,   GT,   LE  ,   GE ,
+
+// [VAR]
+    LEA  ,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * (see previous commits for more info)
      * The following pseudocode illustrates how LEA works.
@@ -168,37 +171,35 @@ enum {
      * Together with JSR, ENT, ADJ, LEV, and LEA instruction, we are able to make
      * function calls.
      */
-    ADJ =  69, 
+    ADJ , 
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
-
-// VARIABLE LENGTH - CONDITIONAL AND/OR HAS C SIDE EFFECTS
-    IMM = 71 ,
+    IMM  ,
     /* IMM <num> to put immediate <num> into general register */
-    BZ = 73 , /*   : conditional jump if general register is zero */
-    BNZ = 76 , /*   : conditional jump if general register is not zero */
-    ENT = 79 , /*   */
+    ENT  , /*   */
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
-    LC = 83 , 
+    LC  , 
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-// CONTROL FLOW (SECOND PASS ONLY)
-    JMP = 87 , /* should be 86, because LC emits max 2 words, but archsim crashes when it's 86.... */
+// [BRC]
+    BZ , /*   : conditional jump if general register is zero */
+    BNZ  , /*   : conditional jump if general register is not zero */
+    JMP ,
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
      * Note that PC points to the NEXT instruction to be executed. Thus *pc
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
-    JSR = 89 , /*   */
+    JSR , /*   */
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -211,12 +212,10 @@ enum {
 
 
 // SYSTEM CALL SHORTCUTS
-    OPEN=91,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
-// CLEAR CACHE
-    CLCA, /* clear cache, used by JIT compilation */
+    OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
 
 // SENTINEL 
-    INVALID = 116
+    INVALID 
 };
 
 // types
@@ -332,19 +331,13 @@ void next()
                 while (le < e) {
                     printf("%8.4s",
                     //        0    1    2    3    4    5    6    7    8    9
-                   /*0*/   & "LEV            LI        SI             SC        "
-                   /*1*/     "     PSH       OR             XOR            AND  "
-                   /*2*/     "          SHL            SHR            ADD       "
-                   /*3*/     "     SUB            MUL            EQ             "
-                   /*4*/     "          NE                       LT             "
-                   /*5*/     "          GT                       LE             "
-                   /*6*/     "          GE                       LEA       ADJ  "
-                   /*7*/     "     IMM       BZ             BNZ            ENT  "
-                   /*8*/     "               LC                  JMP       JSR  "
-                   /*9*/     "     OPEN READ WRIT CLOS PRTF MALC FREE MSET MCMP "
-                  /*10*/     "MCPY MMAP DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA "
-                  /*11*/     "                         INVALID"                  [*++le * 5]);
-                    if ((LEA <= *le && *le <= ENT)||(*le==JMP)||(*le==JSR)) {
+                   /*0*/   & "LEV            LI        PSH       CLCA           "
+                   /*1*/     "                    SI   SC   OR   XOR  AND  SHL  "
+                   /*2*/     "SHR  ADD  SUB  MUL  EQ   NE   LT   GT   LE   GE   "
+                   /*3*/     "LEA  ADJ  IMM  ENT  LC   BZ   BNZ  JMP  JSR  OPEN "   
+                   /*4*/     "READ WRIT CLOS PRTF MALC FREE MSET MCMP MCPY MMAP "
+                   /*5*/     "DSYM BSCH STRT DLOP DIV  MOD  EXIT INVALID"[*++le * 5]);
+                    if ((LEA <= *le && *le <= ENT) || (BZ <= *le && *le <= JSR)) {
                         printf(" %d\n", *++le);
                     } else {
                         printf("\n");
@@ -2207,10 +2200,10 @@ int main(int argc, char **argv)
     }
 
     // add library to symbol table
-    for (i = OPEN; i < CLCA; i++) {
+    for (i = OPEN; i <= EXIT; i++) {
         next(); id->class = Syscall; id->type = INT; id->val = i;
     }
-    next(); id->class = Syscall; id->type = INT; id->val = INVALID;
+    next(); id->class = Syscall; id->type = INT; id->val = CLCA;
     next(); id->tk = Char; // handle void type
     next();
     struct ident_s *idmain = id; // keep track of main
