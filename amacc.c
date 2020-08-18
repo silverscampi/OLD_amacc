@@ -8,6 +8,10 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
+     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+asm (".macro tplfix a, b, c\n\t"
      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
@@ -68,11 +72,17 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[1] = {
-    //BZ,BNZ
+int templ_buf[15] = {
+    // [FIX]    - LEV, LI, PSH, CLCA
+    2, 0xe28bd000, 0xe8bd8800,
+    1, 0xe5900000,
+    1, 0xe52d0004,
+    6, 0xe59d0004, 0xe59d1000, 0xe3a0780f, 0xe2877002, 0xe3a02000, 0xef000000,
+    // [BRC]    - BZ, BNZ
     0xe3500000
 };
-int *tbp_brc = templ_buf;
+int *tbp_fix = templ_buf;
+int *tbp_brc = &templ_buf[14];
 
 // identifier
 struct ident_s {
@@ -151,6 +161,9 @@ enum {
      * the calculation.
      */
     CLCA = 7, /* clear cache, used by JIT compilation */
+    // CLCA is only used when amacc self-compiles!! however, for other reasons
+    //  this self-comp isn't possible anymore and it's not useful so might as well get
+    //   rid of CLCA.
 
 // [POP]
     SI = 14,
@@ -1324,6 +1337,23 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
         switch (i) {
+        case LEV:
+        case LI:
+        case PSH:
+        case CLCA:
+            __asm__ __volatile__ (
+                "tplfix %0, %1, %2\n\t"
+                //outputs
+                : "+r" (je)
+                //inputs
+                : "r" (templ_buf),
+                  "r" (i)
+                // clobbers
+                : "memory"
+            );
+            break;
+
+
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
@@ -1368,12 +1398,6 @@ int *codegen(int *jitmem, int *jitmap)
         case ADJ:
             *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
             break;
-        case LEV:
-            *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
-            break;
-        case LI:
-            *je++ = 0xe5900000;                  // ldr r0, [r0]
-            break;
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
@@ -1382,9 +1406,6 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case SC:
             *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
-            break;
-        case PSH:
-            *je++ = 0xe52d0004;                       // push {r0}
             break;
         case OR:
             *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
@@ -1409,14 +1430,6 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case MUL:
             *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
-            break;
-        case CLCA:
-            *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
-                                                    // ldr r1, [sp]
-            *je++ = 0xe3a0780f; *je++ = 0xe2877002; // mov r7, #0xf0000
-                                                    // add r7, r7, #2
-            *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
-                                                    // svc 0
             break;
         default:
             if (EQ <= i && i <= GE) {
