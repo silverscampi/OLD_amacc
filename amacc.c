@@ -8,10 +8,14 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
-     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplfix a, b, c\n\t"
+     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+asm (".macro tplpop a, b, c\n\t"
      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
@@ -72,17 +76,25 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[15] = {
+int templ_buf[30] = {
     // [FIX]    - LEV, LI, PSH, CLCA
     2, 0xe28bd000, 0xe8bd8800,
     1, 0xe5900000,
     1, 0xe52d0004,
     6, 0xe59d0004, 0xe59d1000, 0xe3a0780f, 0xe2877002, 0xe3a02000, 0xef000000,
+    // [POP]    - SI, SC, OR, XOR, AND,
+    //            SHL, SHR, ADD, SUB, MUL, {EQ, NE, LT, GE, GT, LE}
+    0xe49d1004, 0xe5810000, 0xe5c10000, 0xe1810000, 0xe0210000, 0xe0010000,
+    0xe1a00011, 0xe1a00051, 0xe0800001, 0xe0410000, 0xe0000091, 0xe1510000,
+    // [CMP]    - EQ/NE, LT/GE, GT/LE
+    0x03a013a0, 0xb3a0a3a0, 0xc3a0d3a0,
     // [BRC]    - BZ, BNZ
     0xe3500000
 };
 int *tbp_fix = templ_buf;
-int *tbp_brc = &templ_buf[14];
+int *tbp_pop = &templ_buf[14];
+int *tbp_cmp = &templ_buf[26];
+int *tbp_brc = &templ_buf[29];
 
 // identifier
 struct ident_s {
@@ -177,7 +189,8 @@ enum {
     OR ,   XOR,   AND ,   SHL,   SHR , 
     ADD,   SUB,   MUL ,
     EQ ,   NE , 
-    LT  ,   GT,   LE  ,   GE ,
+    LT  ,   GE,
+    GT  ,   LE ,
 
 // [VAR]
     LEA  ,
@@ -1337,6 +1350,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
         switch (i) {
+        // [FIX]
         case LEV:
         case LI:
         case PSH:
@@ -1353,7 +1367,28 @@ int *codegen(int *jitmem, int *jitmap)
             );
             break;
 
-
+        // [POP]
+        case SI:
+        case SC:
+        case OR:
+        case XOR:
+        case AND:
+        case SHL:
+        case SHR:
+        case ADD:
+        case SUB:
+        case MUL:
+            __asm__ __volatile__ (
+                "tplpop %0, %1, %2\n\t"
+                //outputs
+                : "+r" (je)
+                //inputs
+                : "r" (tbp_pop),
+                  "r" (i-13)    // offset is -(SI-1) = -(14-1) = -13   
+                //clobbers
+                : "memory"
+            );
+            break;
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
@@ -1374,6 +1409,8 @@ int *codegen(int *jitmem, int *jitmap)
         case JMP:
             pc++; je++; // postponed till second pass
             break;
+
+        // [BRC]
         case BZ:
         case BNZ:
             __asm__ __volatile__ (
@@ -1401,36 +1438,7 @@ int *codegen(int *jitmem, int *jitmap)
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
-        case SI:
-            *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
-            break;
-        case SC:
-            *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
-            break;
-        case OR:
-            *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
-            break;
-        case XOR:
-            *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
-            break;
-        case AND:
-            *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
-            break;
-        case SHL:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
-            break;
-        case SHR:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
-            break;
-        case ADD:
-            *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
-            break;
-        case SUB:
-            *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
-            break;
-        case MUL:
-            *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
-            break;
+    
         default:
             if (EQ <= i && i <= GE) {
                 *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
