@@ -8,16 +8,21 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
-     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7c000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplfix a, b, c\n\t"
-     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplpop a, b, c\n\t"
+     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+asm (".macro tplcmp a, b, c\n\t"
      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
+
 
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
@@ -1389,6 +1394,47 @@ int *codegen(int *jitmem, int *jitmap)
                 : "memory"
             );
             break;
+
+        // [CMP]
+        case EQ:
+        case NE:
+        case LT:
+        case GE:
+        case GT:
+        case LE:
+            printf("\ntemplate JIT instruction:\t%d\n", i);
+            int *pje = je;
+            printf("old je: %x\n", je);
+            printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+            fflush(stdout);
+            __asm__ __volatile__ (
+                "tplpop %0, %1, %2\n\t"
+                //outputs
+                : "+r" (je)
+                //inputs
+                : "r" (tbp_pop),
+                  "r" (11)  // cmp instr for all EQ-LE
+                // clobbers
+                : "memory"
+            );
+            printf("new je: %x\n", je);
+            printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
+            fflush(stdout);
+            __asm__ __volatile__ (
+                "tplcmp %0, %1, %2\n\t"
+                //outputs
+                : "+r" (je)
+                //inputs
+                : "r" (tbp_cmp),
+                  "r" ((i-24)*2)    // for indexing halfwords with corrected offset
+                //clobbers
+                : "memory"
+            );
+            printf("new je: %x\n", je);
+            printf("word0: %x\tword1: %x\n", pje[2], pje[3]);
+            fflush(stdout);
+            break;
+        
         case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
@@ -1440,17 +1486,7 @@ int *codegen(int *jitmem, int *jitmap)
             break;
     
         default:
-            if (EQ <= i && i <= GE) {
-                *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
-                if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
-                else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
-                else { je[0] = 0xc3a00000; je[1] = 0xd3a00000; }           // movgt r0, #0; movle r0, #0
-                if (i == EQ || i == LT || i == GT) je[0] = je[0] | 1;
-                else je[1] = je[1] | 1;
-                je += 2;
-                break;
-            }
-            else if (i >= OPEN && i <= EXIT) {
+            if (i >= OPEN && i <= EXIT) {
                 switch (i) {
                     case OPEN: tmp = (int) &open;    break;
                     case READ: tmp = (int) &read;    break;
