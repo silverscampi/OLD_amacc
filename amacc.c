@@ -1437,7 +1437,7 @@ int *codegen(int *jitmem, int *jitmap)
             break;
     
         default:
-            if (EQ <= i && i <= GE) {
+            if (EQ <= i && i <= LE) {
                 *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                 if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
                 else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
