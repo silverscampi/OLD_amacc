@@ -8,15 +8,15 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
-     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7c000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplfix a, b, c\n\t"
-     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplpop a, b, c\n\t"
-     ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 /*
@@ -76,7 +76,7 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[30] = {
+int templ_buf[27] = {
     // [FIX]    - LEV, LI, PSH, CLCA
     2, 0xe28bd000, 0xe8bd8800,
     1, 0xe5900000,
@@ -86,15 +86,12 @@ int templ_buf[30] = {
     //            SHL, SHR, ADD, SUB, MUL, {EQ, NE, LT, GE, GT, LE}
     0xe49d1004, 0xe5810000, 0xe5c10000, 0xe1810000, 0xe0210000, 0xe0010000,
     0xe1a00011, 0xe1a00051, 0xe0800001, 0xe0410000, 0xe0000091, 0xe1510000,
-    // [CMP]    - EQ/NE, LT/GE, GT/LE
-    0x03a013a0, 0xb3a0a3a0, 0xc3a0d3a0,
     // [BRC]    - BZ, BNZ
     0xe3500000
 };
 int *tbp_fix = templ_buf;
 int *tbp_pop = &templ_buf[14];
-int *tbp_cmp = &templ_buf[26];
-int *tbp_brc = &templ_buf[29];
+int *tbp_brc = &templ_buf[26];
 
 // identifier
 struct ident_s {
