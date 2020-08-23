@@ -1402,11 +1402,6 @@ int *codegen(int *jitmem, int *jitmap)
         case GE:
         case GT:
         case LE:
-            printf("\ntemplate JIT instruction:\t%d\n", i);
-            int *pje = je;
-            printf("old je: %x\n", je);
-            printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
-            fflush(stdout);
             __asm__ __volatile__ (
                 "tplpop %0, %1, %2\n\t"
                 //outputs
@@ -1417,8 +1412,6 @@ int *codegen(int *jitmem, int *jitmap)
                 // clobbers
                 : "memory"
             );
-            printf("new je: %x\n", je);
-            printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
             fflush(stdout);
             __asm__ __volatile__ (
                 "tplcmp %0, %1, %2\n\t"
@@ -1430,9 +1423,6 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            printf("new je: %x\n", je);
-            printf("word0: %x\tword1: %x\n", pje[2], pje[3]);
-            fflush(stdout);
             break;
         
         case LEA:
