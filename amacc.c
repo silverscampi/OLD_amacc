@@ -8,18 +8,20 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
-     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7c000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplfix a, b, c\n\t"
-     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
 asm (".macro tplpop a, b, c\n\t"
-     ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-
+asm (".macro tplvar a, b, c, d\n\t"
+     ".long (0xf7f00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8) | (ZZ_\\d << 4))\n\t"
+     ".endm\n\t");
 
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
@@ -78,7 +80,7 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 // template buffer
-int templ_buf[30] = {
+int templ_buf[38] = {
     // [FIX]    - LEV, LI, PSH, CLCA
     2, 0xe28bd000, 0xe8bd8800,
     1, 0xe5900000,
@@ -90,14 +92,18 @@ int templ_buf[30] = {
     0xe1a00011, 0xe1a00051, 0xe0800001, 0xe0410000, 0xe0000091, 0xe1510000,
     // [CMP]    - EQ/NE, LT/GE, GT/LE
     0x03a013a0, 0xb3a0a3a0, 0xc3a0d3a0,
+    // [VAR]    - LEA, ADJ, ENT, LC     (IMM too but it's kinda horrible so leave it for now)
+    0xe28b0000, 0xe24b0000,
+    0xe28dd000,
+    0xe92d4800, 0xe28db000, 0xe24dd000,
+    0xe5d00000, 0xe6af0070,
     // [BRC]    - BZ, BNZ
     0xe3500000
 };
 int *tbp_fix = templ_buf;
 int *tbp_pop = &templ_buf[14];
-int *tbp_cmp = &templ_buf[26];
-int *tbp_brc = &templ_buf[29];
-
+int *tbp_var = &templ_buf[29];
+int *tbp_brc = &templ_buf[37];
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -1400,21 +1406,34 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         
         case LEA:
-            tmp = *pc++;
-            if (tmp >= 64 || tmp <= -64) {
-                printf("jit: LEA %d out of bounds\n", tmp); exit(6);
-            }
-            if (tmp >= 0)
-                *je++ = 0xe28b0000 | tmp * 4;    // add     r0, fp, #(tmp)
-            else
-                *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
+        case ADJ:
+        case ENT:
+        case LC: ;
+            register int *tmp_addr asm("r0") = pc;
+            __asm__ __volatile__ (
+                "tplvar %0, %2, %3, %1\n\t"
+                //outputs
+                : "+r" (je),
+                  "+r" (pc)
+                //inputs
+                : "r" (tbp_var),
+                  "r" (i)
+                //clobbers
+                : "memory"
+            );
             break;
+
+
+
         case IMM:
             tmp = *pc++;
             if (0 <= tmp && tmp < 256)
                 *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
             else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
             break;
+
+
+            
         case JSR:
         case JMP:
             pc++; je++; // postponed till second pass
@@ -1435,19 +1454,7 @@ int *codegen(int *jitmem, int *jitmap)
             );
             pc++; je++;
             break;
-        case ENT:
-            *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
-            tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
-            if (tmp >= 64 || tmp < 0) {
-                printf("jit: ENT %d out of bounds\n", tmp); exit(6);
-            }
-            break;
-        case ADJ:
-            *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
-            break;
-        case LC:
-            *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
-            break;
+        
     
         default:
             if (i >= OPEN && i <= EXIT) {
