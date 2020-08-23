@@ -8,20 +8,17 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r7, 7\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
-     ".long (0xf7c000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
-     ".endm\n\t");
-
-asm (".macro tplfix a, b, c\n\t"
      ".long (0xf7d000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-asm (".macro tplpop a, b, c\n\t"
+asm (".macro tplfix a, b, c\n\t"
      ".long (0xf7e000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-asm (".macro tplcmp a, b, c\n\t"
+asm (".macro tplpop a, b, c\n\t"
      ".long (0xf7f000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
+
 
 
 /*
@@ -1383,18 +1380,6 @@ int *codegen(int *jitmem, int *jitmap)
         case ADD:
         case SUB:
         case MUL:
-            __asm__ __volatile__ (
-                "tplpop %0, %1, %2\n\t"
-                //outputs
-                : "+r" (je)
-                //inputs
-                : "r" (tbp_pop),
-                  "r" (i-13)    // offset is -(SI-1) = -(14-1) = -13   
-                //clobbers
-                : "memory"
-            );
-            break;
-
         // [CMP]
         case EQ:
         case NE:
@@ -1408,18 +1393,7 @@ int *codegen(int *jitmem, int *jitmap)
                 : "+r" (je)
                 //inputs
                 : "r" (tbp_pop),
-                  "r" (11)  // cmp instr for all EQ-LE
-                // clobbers
-                : "memory"
-            );
-            fflush(stdout);
-            __asm__ __volatile__ (
-                "tplcmp %0, %1, %2\n\t"
-                //outputs
-                : "+r" (je)
-                //inputs
-                : "r" (tbp_cmp),
-                  "r" ((i-24)*2)    // for indexing halfwords with corrected offset
+                  "r" (i-13)    // offset is -(SI-1) = -(14-1) = -13   
                 //clobbers
                 : "memory"
             );
