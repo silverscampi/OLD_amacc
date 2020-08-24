@@ -1406,7 +1406,7 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         
         case LEA:
-            tmp = *pc++;
+            tmp = *pc;
             
             printf("\ntemplate JIT instruction:\t%d\n", i);
             printf("tmp: %d\ttmp: %x\n~(tmp-1): %d\t~(tmp-1): %x\n", tmp, tmp, ~(tmp-1), ~(tmp-1));
@@ -1418,10 +1418,10 @@ int *codegen(int *jitmem, int *jitmap)
                 printf("jit: LEA %d out of bounds\n", tmp); exit(6);
             }
             __asm__ __volatile__ (
-                "tplvar %[cbp], %[tbp], %[ir], %[var]\n\t"
+                "tplvar %[cbp], %[tbp], %[ir], %[pc]\n\t"
                 //outputs
                 : [cbp] "+r" (je),
-                  [var]  "+r" (tmp)
+                  [pc]  "+r" (pc)
                 //inputs
                 : [tbp] "r"  (tbp_var),
                   [ir]  "r"  (i)
