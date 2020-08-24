@@ -104,6 +104,7 @@ int *tbp_fix = templ_buf;
 int *tbp_pop = &templ_buf[14];
 int *tbp_var = &templ_buf[29];
 int *tbp_brc = &templ_buf[37];
+int *sig_char_addr = &signed_char;
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -1447,9 +1448,22 @@ int *codegen(int *jitmem, int *jitmap)
 
             break;
 
-
         case LC:
-            *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
+            __asm__ __volatile__ (
+                "tplvar %[cbp], %[tbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (sig_char_addr)
+                //inputs
+                : [tbp] "r"  (tbp_var),
+                  [ir]  "r"  (i)
+                //clobbers
+                : "memory"
+            );
+
+            printf("\ntemplate JIT instruction:\t%d\n", i);
+            printf("word je[-1]: %x\n\n", je[-1]);
+
             break;
 
         case IMM:
