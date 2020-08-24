@@ -1407,13 +1407,6 @@ int *codegen(int *jitmem, int *jitmap)
         
         case LEA:
             tmp = *pc;
-            
-            printf("\ntemplate JIT instruction:\t%d\n", i);
-            printf("tmp: %d\ttmp: %x\n~(tmp-1): %d\t~(tmp-1): %x\n", tmp, tmp, ~(tmp-1), ~(tmp-1));
-            int *pje = je;
-            printf("old je: %x\n", je);
-            printf("word0: %x\n", je[0]);
-
             if (tmp >= 64 || tmp <= -64) {
                 printf("jit: LEA %d out of bounds\n", tmp); exit(6);
             }
@@ -1428,22 +1421,33 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            
-            printf("new je: %x\n", je);
-            printf("word0: %x\n", je[-1]);
             break;
 
-
-        case ENT:
-            *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
-            tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
-            if (tmp >= 64 || tmp < 0) {
-                printf("jit: ENT %d out of bounds\n", tmp); exit(6);
-            }
-            break;
         case ADJ:
-            *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
+        case ENT: 
+            tmp = *pc;
+            if (tmp >= 64 || tmp < 0) {
+                printf("jit: ENT %d out of bounds\n", tmp); fflush(stdout); exit(6);
+            }
+
+            __asm__ __volatile__ (
+                "tplvar %[cbp], %[tbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (pc)
+                //inputs
+                : [tbp] "r"  (tbp_var),
+                  [ir]  "r"  (i)
+                //clobbers
+                : "memory"
+            );
+
+            printf("\ntemplate JIT instruction:\t%d\n", i);
+            printf("word je[-1]: %x\n\n", je[-1]);
+
             break;
+
+
         case LC:
             *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
             break;
