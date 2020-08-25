@@ -371,7 +371,7 @@ void next()
                     //        0    1    2    3    4    5    6    7    8    9
                    /*0*/   & "LEV            LI        PSH       CLCA           "
                    /*1*/     "                    SI   SC   OR   XOR  AND  SHL  "
-                   /*2*/     "SHR  ADD  SUB  MUL  EQ   NE   LT   GT   LE   GE   "
+                   /*2*/     "SHR  ADD  SUB  MUL  EQ   NE   LT   GE   GT   LE   "
                    /*3*/     "LEA  ADJ  IMM  ENT  LC   BZ   BNZ  JMP  JSR  OPEN "   
                    /*4*/     "READ WRIT CLOS PRTF MALC FREE MSET MCMP MCPY MMAP "
                    /*5*/     "DSYM BSCH STRT DLOP DIV  MOD  EXIT INVALID"[*++le * 5]);
