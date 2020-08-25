@@ -1448,10 +1448,6 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-
-            printf("\ntemplate JIT instruction:\t%d\n", i);
-            printf("word je[-1]: %x\n\n", je[-1]);
-
             break;
 
         case IMM:
