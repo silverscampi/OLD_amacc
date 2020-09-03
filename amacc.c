@@ -1549,7 +1549,7 @@ int *codegen(int *jitmem, int *jitmap)
         }
         // If the instruction has operand, increment instruction pointer to
         // skip he operand.
-        else if (i < LEV) { ++pc; }
+        else if ((LEA <= i && i <= ENT) || (BZ <= i && i <= JSR)) { ++pc; }
     }
     free(iv);
     return tje;
