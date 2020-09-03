@@ -5,7 +5,13 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r4, 4\n\t"
      ".equ ZZ_r5, 5\n\t"
      ".equ ZZ_r6, 6\n\t"
-     ".equ ZZ_r7, 7\n\t");
+     ".equ ZZ_r7, 7\n\t"
+     ".equ ZZ_r8, 8\n\t"
+     ".equ ZZ_r9, 9\n\t"
+     ".equ ZZ_r10, 10\n\t"
+     ".equ ZZ_r11, 11\n\t"
+     ".equ ZZ_r12, 12\n\t"
+     ".equ ZZ_ip, 12\n\t");
 
 asm (".macro tplbrc a, b, c\n\t"
      ".long (0xf7c000f0 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
