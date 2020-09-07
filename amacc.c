@@ -55,6 +55,9 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
+int *templ_buf[] = {};
+
+
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -109,7 +112,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA , /*  0 */
+    LEA , //    0
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -144,10 +147,10 @@ enum {
      * function calls.
      */
 
-    IMM , /*  1 */
+    IMM = 3, // 
     /* IMM <num> to put immediate <num> into general register */
 
-    JMP , /*  2 */
+    JMP = 5, //
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
@@ -155,7 +158,7 @@ enum {
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
 
-    JSR , /*  3 */
+    JSR = 6, //
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -166,23 +169,23 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  , /*  4 : conditional jump if general register is zero */
-    BNZ , /*  5 : conditional jump if general register is not zero */
+    BZ  = 7,    /* conditional jump if general register is zero */
+    BNZ = 9,       /* conditional jump if general register is not zero */
 
-    ENT , /*  6 */
+    ENT = 11, //
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ , /*  7 */
+    ADJ = 15, //
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
-    LEV , /*  8 */
+    LEV = 17, //
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
@@ -190,34 +193,34 @@ enum {
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
 
-    LI  , /*  9 */
+    LI  = 20, //
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    LC  , /* 10 */
+    LC  = 21, //
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  , /* 11 */
+    SI  = 24, //
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  , /* 12 */
+    SC  = 27, //
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH , /* 13 */
+    PSH = 30, //
     /* PSH pushes the value in general register onto the stack */
 
-    OR  , /* 14 */  XOR , /* 15 */  AND , /* 16 */
-    EQ  , /* 17 */  NE  , /* 18 */
-    LT  , /* 19 */  GT  , /* 20 */  LE  , /* 21 */ GE  , /* 22 */
-    SHL , /* 23 */  SHR , /* 24 */
-    ADD , /* 25 */  SUB , /* 26 */  MUL , /* 27 */
+    OR  = 32,   XOR = 35,   AND = 38, 
+    EQ  = 41,   NE  = 46, 
+    LT  = 51,   GT  = 56,   LE  = 61,  GE  = 66, 
+    SHL = 71,   SHR = 74, 
+    ADD = 77,   SUB = 80,   MUL = 83, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
