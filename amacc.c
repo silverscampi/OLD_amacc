@@ -55,7 +55,68 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
-int *templ_buf[] = {};
+int *templ_buf[87] = {
+    // LEA
+    // 1/2, 0xe28b0000, 0xe24b0000,
+    0xffffffff, 0xffffffff, 0xffffffff, // no support for now
+    // IMM
+    0xffffffff, 0xffffffff, // no support for now
+    // JMP
+    0xffffffff, // no support
+    // JSR
+    0xffffffff, // no support
+    // BZ
+    1, 0xe3500000,
+    // BNZ
+    1, 0xe3500000,
+    // ENT
+    //3, 0xe92d4800, 0xe28db000, 0xe24dd000,
+    0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, // no support for now
+    // ADJ
+    //1, 0xe28dd000,
+    0xffffffff, 0xffffffff,
+    // LEV
+    2, 0xe28bd000, 0xe8bd8800,
+    // LI
+    1, 0xe5900000,
+    // LC 
+    //2, 0xe5d00000, 0xe6af0070,
+    0xffffffff, 0xffffffff, 0xffffffff, // no support for now 
+    // SI
+    2, 0xe49d1004, 0xe5c10000,
+    // SC
+    2, 0xe49d1004, 0xe5c10000,
+    // PSH
+    1, 0xe52d0004,
+    // OR
+    2, 0xe49d1004, 0xe1810000,
+    // XOR
+    2, 0xe49d1004, 0xe0210000,
+    // AND
+    2, 0xe49d1004, 0xe0010000,
+    // EQ
+    4, 0xe49d1004, 0xe1510000, 0x03a00001, 0x13a00000,
+    // NE
+    4, 0xe49d1004, 0xe1510000, 0x03a00000, 0x13a00001,
+    // LT
+    4, 0xe49d1004, 0xe1510000, 0xb3a00001, 0xa3a00000,
+    // GT
+    4, 0xe49d1004, 0xe1510000, 0xc3a00001, 0xd3a00000,
+    // LE
+    4, 0xe49d1004, 0xe1510000, 0xc3a00000, 0xd3a00001,
+    // GE
+    4, 0xe49d1004, 0xe1510000, 0xb3a00000, 0xa3a00001,
+    // SHL
+    2, 0xe49d1004, 0xe1a00011,
+    // SHR
+    2, 0xe49d1004, 0xe1a00051,
+    // ADD
+    2, 0xe49d1004, 0xe0800001,
+    // SUB
+    2, 0xe49d1004, 0xe0410000,
+    // MUL
+    2, 0xe49d1004, 0xe0000091
+};
 
 
 // identifier
@@ -198,29 +259,29 @@ enum {
      * address which is stored in general register before execution.
      */
 
-    LC  = 21, //
+    LC  = 22, //
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  = 24, //
+    SI  = 25, //
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  = 27, //
+    SC  = 28, //
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH = 30, //
+    PSH = 31, //
     /* PSH pushes the value in general register onto the stack */
 
-    OR  = 32,   XOR = 35,   AND = 38, 
-    EQ  = 41,   NE  = 46, 
-    LT  = 51,   GT  = 56,   LE  = 61,  GE  = 66, 
-    SHL = 71,   SHR = 74, 
-    ADD = 77,   SUB = 80,   MUL = 83, 
+    OR  = 33,   XOR = 36,   AND = 39, 
+    EQ  = 42,   NE  = 47, 
+    LT  = 52,   GT  = 57,   LE  = 62,  GE  = 67, 
+    SHL = 72,   SHR = 75, 
+    ADD = 78,   SUB = 81,   MUL = 84, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
