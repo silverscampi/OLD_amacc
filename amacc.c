@@ -104,7 +104,7 @@ int templ_buf[87] = {
     //2, 0xe5d00000, 0xe6af0070,
     0, 0xffffffff, 0xffffffff, // no support for now 
     // SI
-    2, 0xe49d1004, 0xe5c10000,
+    2, 0xe49d1004, 0xe5810000,
     // SC
     2, 0xe49d1004, 0xe5c10000,
     // PSH
