@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <stdarg.h>
+#include <syscall.h>
 
 /* 64-bit host support */
 #if defined(__x86_64__) || defined(__aarch64__)
@@ -1573,7 +1574,16 @@ int jit(int poolsz, int *main, int argc, char **argv)
     *je++ = 0xe5850000;       // str     r0, [r5]
     *je++ = 0xe28dd008;       // add     sp, sp, #8
     *je++ = 0xe8bd9ff0;       // pop     {r4-r12, pc}
-    if (!(je = codegen(je, jitmap))) return 1;
+
+//    if (!(je = codegen(je, jitmap))) return 1;
+
+unsigned long icount_start = syscall(0xf000f);
+je = codegen(je, jitmap);
+unsigned long icount_end = syscall(0xf000f);
+printf("codegen count: %lu\n", icount_end-icount_start);
+
+    if (!je) return 1;
+
     if (je >= jitmap) die("jitmem too small");
     *tje = reloc_bl(jitmap[((int) main - (int) text) >> 2] - (int) tje);
 
