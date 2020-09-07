@@ -75,34 +75,29 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 int templ_buf[87] = {
-    // LEA
-    // 1/2, 0xe28b0000, 0xe24b0000,
-    0, 0xffffffff, 0xffffffff, // no support for now
+    // LEA                              <---
+    0xe28b0000, 0xe24b0000,
+    // no support for now
     // IMM
-    0, 0xffffffff, // no support for now
+    0, // no support
     // JMP
     0, // no support
     // JSR
     0, // no support
     // BZ
-    // 1, 0xe3500000, // no support for now
-    0, 0xffffffff, 
+    0xe3500000,
     // BNZ
-    // 1, 0xe3500000, // no support for now
-    0, 0xffffffff,
-    // ENT
-    //3, 0xe92d4800, 0xe28db000, 0xe24dd000,
-    0, 0xffffffff, 0xffffffff, 0xffffffff, // no support for now
-    // ADJ
-    //1, 0xe28dd000,
-    0, 0xffffffff,
+    0, // covered by BZ 
+    // ENT                              <---
+    0xe92d4800, 0xe28db000, 0xe24dd000,
+    // ADJ                              <---
+    0xe28dd000,
     // LEV
     2, 0xe28bd000, 0xe8bd8800,
     // LI
     1, 0xe5900000,
-    // LC 
-    //2, 0xe5d00000, 0xe6af0070,
-    0, 0xffffffff, 0xffffffff, // no support for now 
+    // LC                               <---
+    0xe5d00000, 0xe6af0070, 
     // SI
     2, 0xe49d1004, 0xe5810000,
     // SC
@@ -229,10 +224,10 @@ enum {
      * function calls.
      */
 
-    IMM = 3, // 
+    IMM = 2, // 
     /* IMM <num> to put immediate <num> into general register */
 
-    JMP = 5, //
+    JMP = 3, //
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
@@ -240,7 +235,7 @@ enum {
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
 
-    JSR = 6, //
+    JSR = 4, //
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -251,23 +246,23 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  = 7,    /* conditional jump if general register is zero */
-    BNZ = 9,       /* conditional jump if general register is not zero */
+    BZ  = 5,    /* conditional jump if general register is zero */
+    BNZ = 6,       /* conditional jump if general register is not zero */
 
-    ENT = 11, //
+    ENT = 7, //
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ = 15, //
+    ADJ = 10, //
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
-    LEV = 17, //
+    LEV = 11, //
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
@@ -275,34 +270,34 @@ enum {
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
 
-    LI  = 20, //
+    LI  = 14, //
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    LC  = 22, //
+    LC  = 16, //
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  = 25, //
+    SI  = 18, //
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  = 28, //
+    SC  = 21, //
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH = 31, //
+    PSH = 24, //
     /* PSH pushes the value in general register onto the stack */
 
-    OR  = 33,   XOR = 36,   AND = 39, 
-    EQ  = 42,   NE  = 47, 
-    LT  = 52,   GT  = 57,   LE  = 62,  GE  = 67, 
-    SHL = 72,   SHR = 75, 
-    ADD = 78,   SUB = 81,   MUL = 84, 
+    OR  = 26,   XOR = 29,   AND = 32, 
+    EQ  = 35,   NE  = 40, 
+    LT  = 45,   GT  = 50,   LE  = 55,  GE  = 60, 
+    SHL = 65,   SHR = 68, 
+    ADD = 71,   SUB = 74,   MUL = 77, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
@@ -1422,12 +1417,6 @@ int *codegen(int *jitmem, int *jitmap)
         // "pc - text" gets the index of IR.
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
-
-        printf("IR: %d\n", i);
-        printf("cbp: %x\nir: %d\nstat: %d\n", je, i, retn);
-        int *pje = je;
-        fflush(stdout);
-
         __asm__ __volatile__ (
             "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
 
@@ -1442,12 +1431,7 @@ int *codegen(int *jitmem, int *jitmap)
             // clobbers
             : "memory"
         );
-
-        printf("status code: %d\n", retn);
-
-
         if (retn != 0) { //fallback
-            printf("fallback!\tIR: %d\n", i);
             switch (i) {
                 case LEA:
                     tmp = *pc++;
@@ -1542,14 +1526,6 @@ int *codegen(int *jitmem, int *jitmap)
                     }
             }
         } 
-
-
-        printf("word0: %x\n", pje[0]);
-        printf("word1: %x\n", pje[1]);
-        printf("word2: %x\n", pje[2]);
-        printf("word3: %x\n\n", pje[3]);
-        fflush(stdout);
-
 
         if (imm0) {
             if (i == LEV) genpool = 1;
