@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <stdarg.h>
+#include <syscall.h>
 
 /* 64-bit host support */
 #if defined(__x86_64__) || defined(__aarch64__)
