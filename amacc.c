@@ -76,8 +76,7 @@ int ld;              // local variable depth
 
 int templ_buf[87] = {
     // LEA                              <---
-    0xe28b0000, 0xe24b0000,
-    // no support for now
+    0, 0, //0xe28b0000, 0xe24b0000,
     // IMM
     0, // no support
     // JMP
@@ -85,19 +84,19 @@ int templ_buf[87] = {
     // JSR
     0, // no support
     // BZ
-    0xe3500000,
+    0, //0xe3500000,
     // BNZ
-    0, // covered by BZ 
+    0, //0xe3500000, 
     // ENT                              <---
-    0xe92d4800, 0xe28db000, 0xe24dd000,
+    0, 0, 0, //0xe92d4800, 0xe28db000, 0xe24dd000,
     // ADJ                              <---
-    0xe28dd000,
+    0, //0xe28dd000,
     // LEV
     2, 0xe28bd000, 0xe8bd8800,
     // LI
     1, 0xe5900000,
     // LC                               <---
-    0xe5d00000, 0xe6af0070, 
+    0, 0, //0xe5d00000, 0xe6af0070, 
     // SI
     2, 0xe49d1004, 0xe5810000,
     // SC
@@ -1417,6 +1416,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "pc - text" gets the index of IR.
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
+
         __asm__ __volatile__ (
             "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
 
@@ -1431,6 +1431,7 @@ int *codegen(int *jitmem, int *jitmap)
             // clobbers
             : "memory"
         );
+
         if (retn != 0) { //fallback
             switch (i) {
                 case LEA:
@@ -1526,7 +1527,7 @@ int *codegen(int *jitmem, int *jitmap)
                     }
             }
         } 
-
+        
         if (imm0) {
             if (i == LEV) genpool = 1;
             else if ((int) je > (int) imm0 + 3000) {
