@@ -12,7 +12,12 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_r11, 11\n\t"
      ".equ ZZ_fp, 11\n\t"
      ".equ ZZ_r12, 12\n\t"
-     ".equ ZZ_ip, 12\n\t");
+     ".equ ZZ_ip, 12\n\t"
+     ".equ ZZ_lr, 14\n\t");
+
+asm (".macro tplvar a, b, c, d, e\n\t"
+     ".long (0xf7e00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8) | (ZZ_\\d << 4) | (ZZ_\\e))\n\t"
+     ".endm\n\t");
 
 asm (".macro tplcpy a, b, c, d\n\t"
      ".long (0xf7f00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8) | (ZZ_\\d << 4))\n\t"
@@ -1417,6 +1422,16 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
 
+        // STATUS CODES
+        // 0: success
+        // 1: fall to tplvar
+        // 2: fallback to amacc
+        // 3: LEA out of bounds
+        // 4: ENT out of bounds
+
+        printf("IR: %d\n", i);
+        fflush(stdout);
+
         __asm__ __volatile__ (
             "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
 
@@ -1432,7 +1447,28 @@ int *codegen(int *jitmem, int *jitmap)
             : "memory"
         );
 
-        if (retn != 0) { //fallback
+        if (retn == 1) {
+            printf("fall through to var\n");
+            fflush(stdout);
+            __asm__ __volatile__ (
+                "tplvar %[cbp], %[tbp], %[ir], %[stat], %[var]\n\t"
+                // outputs
+                :[cbp]  "+r" (je),
+                 [stat] "+r" (retn),
+                 [var]  "+r" (pc)
+
+                // inputs
+                :[tbp]  "r"  (templ_buf),
+                 [ir]   "r"  (i)
+
+                // clobbers
+                : "memory"
+            );
+        }
+        
+        if (retn == 2) { //fallback to amacc
+            printf("fall through to amacc\n");
+            fflush(stdout);
             switch (i) {
                 case LEA:
                     tmp = *pc++;
@@ -1526,7 +1562,13 @@ int *codegen(int *jitmem, int *jitmap)
                         return 0;
                     }
             }
-        } 
+        } else if (retn == 3) {
+            printf("LEA out of bounds\n");
+            exit(1);
+        } else if (retn == 4) {
+            printf("ENT out of bounds\n");
+            exit(1);
+        }
         
         if (imm0) {
             if (i == LEV) genpool = 1;
