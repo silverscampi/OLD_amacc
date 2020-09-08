@@ -81,7 +81,7 @@ int ld;              // local variable depth
 
 int templ_buf[87] = {
     // LEA                              <---
-    0, 0, //0xe28b0000, 0xe24b0000,
+    0xe28b0000, 0xe24b0000,
     // IMM
     0, // no support
     // JMP
@@ -89,13 +89,13 @@ int templ_buf[87] = {
     // JSR
     0, // no support
     // BZ
-    0, //0xe3500000,
+    0xe3500000,
     // BNZ
-    0, //0xe3500000, 
+    0xe3500000, 
     // ENT                              <---
-    0, 0, 0, //0xe92d4800, 0xe28db000, 0xe24dd000,
+    0xe92d4800, 0xe28db000, 0xe24dd000,
     // ADJ                              <---
-    0, //0xe28dd000,
+    0xe28dd000,
     // LEV
     2, 0xe28bd000, 0xe8bd8800,
     // LI
@@ -1429,9 +1429,11 @@ int *codegen(int *jitmem, int *jitmap)
         // 3: LEA out of bounds
         // 4: ENT out of bounds
 
+/*
+        int *pje = je;
         printf("IR: %d\n", i);
         fflush(stdout);
-
+*/
         __asm__ __volatile__ (
             "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
 
@@ -1448,8 +1450,9 @@ int *codegen(int *jitmem, int *jitmap)
         );
 
         if (retn == 1) {
-            printf("fall through to var\n");
-            fflush(stdout);
+            /*printf("fall through to var\n");
+            printf("pc before: %x\n", pc);
+            fflush(stdout);*/
             __asm__ __volatile__ (
                 "tplvar %[cbp], %[tbp], %[ir], %[stat], %[var]\n\t"
                 // outputs
@@ -1464,11 +1467,14 @@ int *codegen(int *jitmem, int *jitmap)
                 // clobbers
                 : "memory"
             );
+
+            //printf("pc after: %x\n", pc);
+            //fflush(stdout);
         }
-        
+
         if (retn == 2) { //fallback to amacc
-            printf("fall through to amacc\n");
-            fflush(stdout);
+            //printf("fall through to amacc\n");
+            //fflush(stdout);
             switch (i) {
                 case LEA:
                     tmp = *pc++;
@@ -1504,7 +1510,7 @@ int *codegen(int *jitmem, int *jitmap)
                 case ADJ:
                     *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
                     break;
-                case LC:
+                case LC:    // KEEP ME HERE
                     *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
                     break;
                 case CLCA:
@@ -1569,7 +1575,12 @@ int *codegen(int *jitmem, int *jitmap)
             printf("ENT out of bounds\n");
             exit(1);
         }
-        
+    /*
+        printf("word0: %x\n", pje[0]);
+        printf("word1: %x\n", pje[1]);
+        printf("word2: %x\n", pje[2]);
+        printf("word3: %x\n\n", pje[3]);
+      */  
         if (imm0) {
             if (i == LEV) genpool = 1;
             else if ((int) je > (int) imm0 + 3000) {
