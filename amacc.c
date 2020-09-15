@@ -1688,17 +1688,16 @@ int jit(int poolsz, int *main, int argc, char **argv)
 unsigned long icount_start = syscall(0xf000f);
 je = codegen(je, jitmap);
 unsigned long icount_end = syscall(0xf000f);
-/*
-printf("codegen count: %lu\n", icount_end-icount_start);
+printf("\ncodegen count: %lu\n\n", icount_end-icount_start);
 printf("successes: %d\n", success);
 printf("failures: %d\n", fail);
 printf("LEA: %d\n", LEAcount);
 printf("IMM: %d\n", IMMcount);
 printf("JSR: %d\n", JSRcount);
-printf("ADJ: %d\n", ADJcount);
+printf("ADJ: %d\n\ni", ADJcount);
 printf("8bit IMM: %d\n", eightbit);
 fflush(stdout);
-*/
+
 
 
     if (!je) return 1;
