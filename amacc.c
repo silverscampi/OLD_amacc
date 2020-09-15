@@ -81,7 +81,7 @@ int ld;              // local variable depth
 
 int success;
 int fail;
-int LEAcount, SIMMcount, LIMMcount, IMMcount, JSRcount, ADJcount;
+int LEAcount, SIMMcount, LIMMcount, JSRcount, ADJcount;
 int eightbit;
 
 int templ_buf[87] = {
@@ -1454,11 +1454,12 @@ int *codegen(int *jitmem, int *jitmap)
         // 3: LEA out of bounds
         // 4: ENT out of bounds
 
-    /*
+        /*
         int *pje = je;
         printf("IR: %d\n", i);
         fflush(stdout);
-    */
+        */
+
         __asm__ __volatile__ (
             "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
 
@@ -1475,11 +1476,11 @@ int *codegen(int *jitmem, int *jitmap)
         );
 
         if (retn == 1) {
-           /* 
-            printf("fall through to var\n");
-            printf("pc before: %x\n", pc);
-            fflush(stdout);
-            */
+           
+            //printf("fall through to var\n");
+            //printf("pc before: %x\n", pc);
+            //fflush(stdout);
+           
             __asm__ __volatile__ (
                 "tplvar %[cbp], %[tbp], %[ir], %[stat], %[var]\n\t"
                 // outputs
@@ -1503,11 +1504,13 @@ int *codegen(int *jitmem, int *jitmap)
             //printf("fall through to amacc\n");
             //fflush(stdout);
             switch (i) {
+                /*
                 case SIMM:
                     tmp = *pc++;
                     eightbit++;
                     *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
                     break;
+                */
                 case LIMM:
                     tmp = *pc++;
                     if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; 
@@ -1575,6 +1578,7 @@ int *codegen(int *jitmem, int *jitmap)
                         return 0;
                     }
             }
+        
         } else if (retn == 3) {
             printf("LEA out of bounds\n");
             exit(1);
@@ -1587,7 +1591,6 @@ int *codegen(int *jitmem, int *jitmap)
         if (retn == 0) {
             success++;
         } else {
-            //printf("IR: %d\n", i);
             if (i==LEA) LEAcount++;
             if (i==SIMM) SIMMcount++;
             if (i==LIMM) LIMMcount++;
@@ -1596,13 +1599,14 @@ int *codegen(int *jitmem, int *jitmap)
             fail++;
         }
         
-    /*
+        /*
         printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
-    */
-   
+        fflush(stdout);
+        */
+
         if (imm0) {
             if (i == LEV) genpool = 1;
             else if ((int) je > (int) imm0 + 3000) {
@@ -1717,7 +1721,6 @@ printf("failures: %d\n", fail);
 printf("LEA: %d\n", LEAcount);
 printf("SIMM: %d\n", SIMMcount);
 printf("LIMM: %d\n", LIMMcount);
-printf("      %d\n", IMMcount);
 printf("JSR: %d\n", JSRcount);
 printf("ADJ: %d\n", ADJcount);
 printf("8bit IMM: %d\n", eightbit);
