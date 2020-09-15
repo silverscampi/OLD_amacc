@@ -87,8 +87,10 @@ int eightbit;
 int templ_buf[87] = {
     // LEA                              <---
     0xe28b0000, 0xe24b0000,
-    // IMM
-    0xe320f000, // no support
+    // SIMM
+    0xe320f000, // nop
+    // LIMM
+    0xe320f000, // nop
     // JMP
     0, // no support
     // JSR
@@ -233,10 +235,13 @@ enum {
      * function calls.
      */
 
-    IMM = 2, // 
-    /* IMM <num> to put immediate <num> into general register */
+    SIMM = 2, // 
+        /* SIMM <num> to put 8-bit immediate <num> into general register */
 
-    JMP = 3, //
+    LIMM = 3,
+        /* LIMM <num> to put larger than 8-bit immediate <num> into general register */
+
+    JMP = 4, //
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
@@ -244,7 +249,7 @@ enum {
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
 
-    JSR = 4, //
+    JSR = 5, //
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -255,23 +260,23 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  = 5,    /* conditional jump if general register is zero */
-    BNZ = 6,       /* conditional jump if general register is not zero */
+    BZ  = 6,    /* conditional jump if general register is zero */
+    BNZ = 7,       /* conditional jump if general register is not zero */
 
-    ENT = 7, //
+    ENT = 8, //
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ = 10, //
+    ADJ = 11, //
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
-    LEV = 11, //
+    LEV = 12, //
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
@@ -279,34 +284,34 @@ enum {
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
 
-    LI  = 14, //
+    LI  = 15, //
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    LC  = 16, //
+    LC  = 17, //
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  = 18, //
+    SI  = 19, //
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  = 21, //
+    SC  = 22, //
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH = 24, //
+    PSH = 25, //
     /* PSH pushes the value in general register onto the stack */
 
-    OR  = 26,   XOR = 29,   AND = 32, 
-    EQ  = 35,   NE  = 40, 
-    LT  = 45,   GT  = 50,   LE  = 55,  GE  = 60, 
-    SHL = 65,   SHR = 68, 
-    ADD = 71,   SUB = 74,   MUL = 77, 
+    OR  = 27,   XOR = 30,   AND = 33, 
+    EQ  = 36,   NE  = 41, 
+    LT  = 46,   GT  = 51,   LE  = 56,  GE  = 61, 
+    SHL = 66,   SHR = 69, 
+    ADD = 72,   SUB = 75,   MUL = 78, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
@@ -435,17 +440,16 @@ void next()
                 while (le < e) {
                     printf("%8.4s",
                            /*0    1    2    3    4    5    6    7    8    9    */
-                    /*0*/ & "LEA            IMM       JMP  JSR  BZ        BNZ  "
-                    /*1*/   "     ENT                 ADJ       LEV            "
-                    /*2*/   "LI        LC             SI             SC        "
-                    /*3*/   "     PSH       OR             XOR            AND  "
-                    /*4*/   "          EQ                       NE             "
-                    /*5*/   "          LT                       GT             "
-                    /*6*/   "          LE                       GE             "
-                    /*7*/   "          SHL            SHR            ADD       "
-                    /*8*/   "     SUB            MUL  OPEN READ WRIT CLOS PRTF "
-                    /*9*/   "MALC FREE MSET MCMP MCPY MMAP DSYM BSCH STRT DLOP "
-                   /*10*/   "DIV  MOD  EXIT CLCA" [*++le * 5]);
+                    /*0*/ & "LEA       SIMM LIMM JMP  JSR  BZ   BNZ  ENT       "
+                    /*1*/   "     ADJ  LEV            LI        LC        SI   "
+                    /*2*/   "          SC             PSH       OR             "
+                    /*3*/   "XOR            AND            EQ                  "
+                    /*4*/   "     NE                       LT                  "
+                    /*5*/   "     GT                       LE                  "
+                    /*6*/   "     GE                       SHL            SHR  "
+                    /*7*/   "          ADD            SUB            MUL  OPEN "
+                    /*8*/   "READ WRIT CLOS PRTF MALC FREE MSET MCMP MCPY MMAP "
+                    /*9*/   "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
                     if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
                 }
             }
