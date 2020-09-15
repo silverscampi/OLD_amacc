@@ -81,7 +81,7 @@ int ld;              // local variable depth
 
 int success;
 int fail;
-int LEAcount, IMMcount, JSRcount, ADJcount;
+int LEAcount, SIMMcount, LIMMcount, IMMcount, JSRcount, ADJcount;
 int eightbit;
 
 int templ_buf[87] = {
@@ -927,7 +927,12 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
-        *++e = IMM; *++e = n[1];
+        //*++e = IMM; *++e = n[1];
+        if (0 <= n[1] && n[1] < 256) {
+            *++e = SIMM; *++e = n[1];
+        } else {
+            *++e = LIMM; *++e = n[1];
+        }
         break;
     case Loc: // get the value of variable
         *++e = LEA; *++e = n[1];
@@ -947,8 +952,19 @@ void gen(int *n)
     case Dec:
         gen(n + 2);
         *++e = PSH; *++e = (n[1] == CHAR) ? LC : LI; *++e = PSH;
+        /*
         *++e = IMM; *++e = (n[1] >= PTR2) ? sizeof(int) :
                                             n[1] >= PTR ? tsize[n[1] - PTR] : 1;
+        */
+        if (n[1] >= PTR2) {                         // PTR2 == 512
+            *++e = LIMM; *++e = sizeof(int);
+        } else if (n[1] >= PTR) {                   // PTR == 256
+            *++e = LIMM; *++e = tsize[n[1] - PTR];
+        } else {
+            *++e = SIMM; *++e = 1;
+        }
+
+        
         *++e = (i == Inc) ? ADD : SUB;
         *++e = (n[1] == CHAR) ? SC : SI;
         break;
@@ -1059,7 +1075,7 @@ void gen(int *n)
         a = 0;
         *e = (int) (e + 7); *++e = PSH; i = *cas; *cas = (int) e;
         gen((int *) n[1]); // condition
-        if (e[-1] != IMM) fatal("bad case immediate");
+        if (e[-1] != SIMM || e[-1] != LIMM) fatal("bad case immediate");
         *++e = SUB; *++e = BNZ; cas = ++e; *e = i + e[-3];
         if (*(int *) n[2] == Switch) a = cas;
         gen((int *) n[2]); // expression
@@ -1487,12 +1503,14 @@ int *codegen(int *jitmem, int *jitmap)
             //printf("fall through to amacc\n");
             //fflush(stdout);
             switch (i) {
-                case IMM:
+                case SIMM:
                     tmp = *pc++;
-                    if (0 <= tmp && tmp < 256) {
-                        eightbit++;
-                        *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
-                    } else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
+                    eightbit++;
+                    *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
+                    break;
+                case LIMM:
+                    tmp = *pc++;
+                    if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; 
                     break;
 
                 case JSR:
@@ -1571,7 +1589,8 @@ int *codegen(int *jitmem, int *jitmap)
         } else {
             //printf("IR: %d\n", i);
             if (i==LEA) LEAcount++;
-            if (i==IMM) IMMcount++;
+            if (i==SIMM) SIMMcount++;
+            if (i==LIMM) LIMMcount++;
             if (i==JSR) JSRcount++;
             if (i==ADJ) ADJcount++;
             fail++;
@@ -1692,17 +1711,18 @@ int jit(int poolsz, int *main, int argc, char **argv)
 unsigned long icount_start = syscall(0xf000f);
 je = codegen(je, jitmap);
 unsigned long icount_end = syscall(0xf000f);
-/*
 printf("codegen count: %lu\n", icount_end-icount_start);
 printf("successes: %d\n", success);
 printf("failures: %d\n", fail);
 printf("LEA: %d\n", LEAcount);
-printf("IMM: %d\n", IMMcount);
+printf("SIMM: %d\n", SIMMcount);
+printf("LIMM: %d\n", LIMMcount);
+printf("      %d\n", IMMcount);
 printf("JSR: %d\n", JSRcount);
 printf("ADJ: %d\n", ADJcount);
 printf("8bit IMM: %d\n", eightbit);
 fflush(stdout);
-*/
+
 
 
     if (!je) return 1;
