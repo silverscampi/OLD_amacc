@@ -88,7 +88,7 @@ int templ_buf[87] = {
     // LEA                              <---
     0xe28b0000, 0xe24b0000,
     // SIMM
-    0xe320f000, // nop
+    0xe3a00000, 
     // LIMM
     0xe320f000, // nop
     // JMP
