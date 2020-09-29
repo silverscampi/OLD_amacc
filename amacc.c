@@ -103,6 +103,11 @@ int templ_buf[37] = {
     2, 0xe49d1004, 0xe0000091
 };
 
+unsigned long icount_end_1;
+unsigned long icount_end_2;
+unsigned long icount_end_3;
+unsigned long icount_end_4;
+
 // identifier
 struct ident_s {
     int tk;          // type-id or keyword
@@ -1351,6 +1356,8 @@ int *codegen(int *jitmem, int *jitmap)
     int *imm0 = 0;
     int genpool = 0;
 
+icount_end_1 = syscall(0xf000f);
+
     // first pass: emit native code
     int *pc = text + 1; je = jitmem; line = 0;
     while (pc <= e) {
@@ -1506,12 +1513,14 @@ int *codegen(int *jitmem, int *jitmap)
             }
         }
 
+icount_end_2 = syscall(0xf000f);
+
         if (imm0) {
             if (i == LEV) genpool = 1;
             else if ((int) je > (int) imm0 + 3000) {
                 tje = je++; genpool = 2;
             }
-        }
+        }        
         if (genpool) {
             *iv = 0;
             while (il > immloc) {
@@ -1534,9 +1543,12 @@ int *codegen(int *jitmem, int *jitmap)
             imm0 = 0;
             genpool = 0;
         }
+
     }
     if (il > immloc) die("codegen: not terminated by a LEV");
     tje = je;
+
+icount_end_3 = syscall(0xf000f);
 
     // second pass
     pc = text + 1; // Point instruction pointer "pc" to the first instruction.
@@ -1568,6 +1580,9 @@ int *codegen(int *jitmem, int *jitmap)
         // skip he operand.
         else if ((LEA <= i && i <= ENT) || (i==JMP) || (i==JSR)) { ++pc; }
     }
+
+icount_end_4 = syscall(0xf000f);
+
     free(iv);
     return tje;
 }
@@ -1611,7 +1626,17 @@ int jit(int poolsz, int *main, int argc, char **argv)
 unsigned long icount_start = syscall(0xf000f);
 je = codegen(je, jitmap);
 unsigned long icount_end = syscall(0xf000f);
-printf("codegen count: %lu\n", icount_end-icount_start);
+
+printf("\ncodegen setup count: %lu\n", icount_end_1 - icount_start);
+printf("codegen switch count: %lu\n", icount_end_2 - icount_end_1);
+
+printf("codegen first pass count: %lu\n", icount_end_3 - icount_end_1);
+printf("codegen second pass count: %lu\n\n", icount_end_4 - icount_end_3);
+
+printf("codegen cumulative count: %lu\n", icount_end-icount_start);
+
+
+
 
     if (!je) return 1;
 
