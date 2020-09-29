@@ -1347,6 +1347,16 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    // write templ_buf address to dedicated system register
+    __asm__ (
+        "mcr p15, #0, %0, cr12, cr0, #0"
+        // outs
+        :
+        // ins
+        : "r" (templ_buf)
+        // clobbers
+    );
+
     int i, tmp;
     int *je, *tje;    // current position in emitted native code
     int *immloc, *il;
@@ -1356,7 +1366,7 @@ int *codegen(int *jitmem, int *jitmap)
     int *imm0 = 0;
     int genpool = 0;
 
-icount_end_1 = syscall(0xf000f);
+//icount_end_1 = syscall(0xf000f);
 
     // first pass: emit native code
     int *pc = text + 1; je = jitmem; line = 0;
@@ -1384,15 +1394,14 @@ icount_end_1 = syscall(0xf000f);
             //int *pje = je;
             //printf("word0: %x\tword1: %x\n", pje[0], pje[1]);
             //fflush(stdout);
-            __asm__ __volatile__ (
-                "tplcpy %0, %1, %2\n"
+            __asm__ (
+                "tplcpy %0, r0, %1\n"
 
                 //outputs
                 : "+r" (je)
                 
                 //inputs
-                : "r" (templ_buf),
-                  "r" (i)
+                : "r" (i)
                 
                 //clobbers
                 : "memory"
@@ -1513,7 +1522,7 @@ icount_end_1 = syscall(0xf000f);
             }
         }
 
-icount_end_2 = syscall(0xf000f);
+//icount_end_2 = syscall(0xf000f);
 
         if (imm0) {
             if (i == LEV) genpool = 1;
@@ -1548,7 +1557,7 @@ icount_end_2 = syscall(0xf000f);
     if (il > immloc) die("codegen: not terminated by a LEV");
     tje = je;
 
-icount_end_3 = syscall(0xf000f);
+//icount_end_3 = (0xf000f);
 
     // second pass
     pc = text + 1; // Point instruction pointer "pc" to the first instruction.
@@ -1581,7 +1590,7 @@ icount_end_3 = syscall(0xf000f);
         else if ((LEA <= i && i <= ENT) || (i==JMP) || (i==JSR)) { ++pc; }
     }
 
-icount_end_4 = syscall(0xf000f);
+//icount_end_4 = syscall(0xf000f);
 
     free(iv);
     return tje;
@@ -1626,14 +1635,13 @@ int jit(int poolsz, int *main, int argc, char **argv)
 unsigned long icount_start = syscall(0xf000f);
 je = codegen(je, jitmap);
 unsigned long icount_end = syscall(0xf000f);
-
+/*
 printf("\ncodegen setup count: %lu\n", icount_end_1 - icount_start);
 printf("codegen switch count: %lu\n", icount_end_2 - icount_end_1);
-
 printf("codegen first pass count: %lu\n", icount_end_3 - icount_end_1);
 printf("codegen second pass count: %lu\n\n", icount_end_4 - icount_end_3);
-
-printf("codegen cumulative count: %lu\n", icount_end-icount_start);
+*/
+printf("codegen count: %lu\n", icount_end - icount_start);
 
 
 
