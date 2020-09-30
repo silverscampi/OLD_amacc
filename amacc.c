@@ -1464,11 +1464,11 @@ int *codegen(int *jitmem, int *jitmap)
         // 3: LEA out of bounds
         // 4: ENT out of bounds
 
-        /*
-        int *pje = je;
+        
+        /* int *pje = je;
         printf("IR: %d\n", i);
-        fflush(stdout);
-        */
+        fflush(stdout); */
+        
 
         __asm__  (
             "tplcpy %[cbp], r0, %[ir], %[stat]\n\t"
@@ -1486,32 +1486,31 @@ int *codegen(int *jitmem, int *jitmap)
 
         if (retn == 1) {
            
-            //printf("fall through to var\n");
-            //printf("pc before: %x\n", pc);
-            //fflush(stdout);
+            /* printf("fall through to var\n");
+            printf("pc before: %x\n", pc);
+            fflush(stdout); */
            
-            __asm__ __volatile__ (
-                "tplvar %[cbp], %[tbp], %[ir], %[stat], %[var]\n\t"
+            __asm__ (
+                "tplvar %[cbp], r0, %[ir], %[stat], %[var]\n\t"
                 // outputs
                 :[cbp]  "+r" (je),
                  [stat] "+r" (retn),
                  [var]  "+r" (pc)
 
                 // inputs
-                :[tbp]  "r"  (templ_buf),
-                 [ir]   "r"  (i)
+                : [ir]   "r"  (i)
 
                 // clobbers
                 : "memory"
             );
 
-            //printf("pc after:  %x\n", pc);
-            //fflush(stdout);
+            /* printf("pc after:  %x\n", pc);
+            fflush(stdout); */
         }
 
         if (retn == 2) { //fallback to amacc
-            //printf("fall through to amacc\n");
-            //fflush(stdout);
+            /* printf("fall through to amacc\n");
+            fflush(stdout); */
             switch (i) {
                 /*
                 case SIMM:
@@ -1608,13 +1607,12 @@ int *codegen(int *jitmem, int *jitmap)
             fail++;
         }
         
-        /*
-        printf("word0: %x\n", pje[0]);
+        /* printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
-        fflush(stdout);
-        */
+        fflush(stdout); */
+        
 
         if (imm0) {
             if (i == LEV) genpool = 1;
