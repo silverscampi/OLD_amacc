@@ -1313,6 +1313,17 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    __asm__ (
+        "mcr p15, #0, %0, cr12, cr0, #0"
+        //outs
+        :
+        //ins
+        : "r" (templ_buf)
+        //clobbers
+        :
+    );
+
+
     int i, tmp;
     int *je, *tje;    // current position in emitted native code
     int *immloc, *il;
@@ -1353,13 +1364,12 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         case BZ:
         case BNZ:
-            __asm__ __volatile__ (
-                "tplbrc %0, %1, %2\n\t"
+            __asm__ (
+                "tplbrc %0, r0, %2\n\t"
                 //outputs
                 : "+r" (je)
                 //inputs
-                : "r" (tbp_brc),
-                  "r" (i) //unused atm (could be for second pass)
+                : "r" (i) //unused atm (could be for second pass)
                 //clobbers
                 : "memory"
             );
