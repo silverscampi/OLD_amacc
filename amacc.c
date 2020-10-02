@@ -1404,6 +1404,16 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    // write templ_buf address to dedicated system register
+    __asm__ (
+        "mcr p15, #0, %0, cr12, cr0, #0"
+        // outs
+        :
+        // ins
+        : "r" (templ_buf)
+        // clobbers
+    );
+
     int i, tmp, retn;
     int *je, *tje;    // current position in emitted native code
     int *immloc, *il;
@@ -1435,15 +1445,14 @@ int *codegen(int *jitmem, int *jitmap)
         fflush(stdout);
 */
         __asm__ __volatile__ (
-            "tplcpy %[cbp], %[tbp], %[ir], %[stat]\n\t"
+            "tplcpy %[cbp], r0, %[ir], %[stat]\n\t"
 
             // outputs
             : [cbp]  "+r" (je),
               [stat] "+r" (retn)
 
             // inputs
-            : [tbp] "r" (templ_buf),
-              [ir]  "r" (i)
+            : [ir]  "r" (i)
 
             // clobbers
             : "memory"
