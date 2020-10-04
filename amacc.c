@@ -1444,7 +1444,7 @@ int *codegen(int *jitmem, int *jitmap)
         printf("IR: %d\n", i);
         fflush(stdout);
 */
-        __asm__ __volatile__ (
+        __asm__  (
             "tplcpy %[cbp], r0, %[ir], %[stat]\n\t"
 
             // outputs
@@ -1462,16 +1462,15 @@ int *codegen(int *jitmem, int *jitmap)
             /*printf("fall through to var\n");
             printf("pc before: %x\n", pc);
             fflush(stdout);*/
-            __asm__ __volatile__ (
-                "tplvar %[cbp], %[tbp], %[ir], %[stat], %[var]\n\t"
+            __asm__ (
+                "tplvar %[cbp], r0, %[ir], %[stat], %[var]\n\t"
                 // outputs
                 :[cbp]  "+r" (je),
                  [stat] "+r" (retn),
                  [var]  "+r" (pc)
 
                 // inputs
-                :[tbp]  "r"  (templ_buf),
-                 [ir]   "r"  (i)
+                : [ir]   "r"  (i)
 
                 // clobbers
                 : "memory"
