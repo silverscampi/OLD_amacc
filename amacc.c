@@ -1576,13 +1576,13 @@ int *codegen(int *jitmem, int *jitmap)
                         return 0;
                     }
             }
-        } else if (retn == 3) {
+        } /*else if (retn == 3) {
             printf("LEA out of bounds\n");
             exit(1);
         } else if (retn == 4) {
             printf("ENT out of bounds\n");
             exit(1);
-        }
+        }*/
     /*
         printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
