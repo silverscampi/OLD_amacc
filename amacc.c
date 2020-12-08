@@ -96,6 +96,7 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
+// TODO : MAKE THIS MATCH NEW DESIGN
 int templ_buf[] = {
     // LEA
     0xe28b0000, 0xe24b0000,
@@ -246,6 +247,8 @@ enum {
 
     IMM , /*  1 */
     /* IMM <num> to put immediate <num> into general register */
+
+    // ADD SIMM
 
     JMP , /*  2 */
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
@@ -444,6 +447,7 @@ void next()
                 printf("%d: %.*s", line, p - lp, lp);
                 lp = p;
                 while (le < e) {
+                    // TODO : add SIMM
                     printf("%8.4s",
                            & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
                              "LI   LC   SI   SC   PSH  "
@@ -452,6 +456,7 @@ void next()
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
+                    // TODO : adjust this condition if needed, now that SIMM has been added
                     if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
                 }
             }
@@ -929,6 +934,7 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
+        //TODO : add option for SIMM in here
         *++e = IMM; *++e = n[1];
         break;
     case Loc: // get the value of variable
@@ -1061,6 +1067,7 @@ void gen(int *n)
         a = 0;
         *e = (int) (e + 7); *++e = PSH; i = *cas; *cas = (int) e;
         gen((int *) n[1]); // condition
+        // TODO : add option for SIMM here
         if (e[-1] != IMM) fatal("bad case immediate");
         *++e = SUB; *++e = BNZ; cas = ++e; *e = i + e[-3];
         if (*(int *) n[2] == Switch) a = cas;
@@ -1627,6 +1634,7 @@ int *codegen(int *jitmem, int *jitmap)
         je = (int *) jitmap[((int) pc - (int) text) >> 2];
         i = *pc++; // Get current instruction
         // If the instruction is one of the jumps.
+        // TODO : double check this is OK with addition of SIMM/LIMM
         if (i == JSR || i == JMP || i == BZ || i == BNZ) {
             switch (i) {
             case JSR:
@@ -1647,7 +1655,8 @@ int *codegen(int *jitmem, int *jitmap)
                    reloc_imm(jitmap[(tmp - (int) text) >> 2] - (int) je));
         }
         // If the instruction has operand, increment instruction pointer to
-        // skip he operand.
+        // skip the operand.
+        // TODO : double check this is OK with addition of SIMM/LIMM
         else if (i < LEV) { ++pc; }
     }
     free(iv);
