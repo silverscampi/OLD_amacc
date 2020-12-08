@@ -1,3 +1,44 @@
+// &&&&&&&&&&&&&&&&&&&&&&&&&
+//      MACROS
+// &&&&&&&&&&&&&&&&&&&&&&&&&
+
+asm (".equ ZZ_r0, 0\n\t"
+     ".equ ZZ_r1, 1\n\t"
+     ".equ ZZ_r2, 2\n\t"
+     ".equ ZZ_r3, 3\n\t"
+     ".equ ZZ_r4, 4\n\t"
+     ".equ ZZ_r5, 5\n\t"
+     ".equ ZZ_r6, 6\n\t"
+     ".equ ZZ_r7, 7\n\t"
+     ".equ ZZ_r8, 8\n\t"
+     ".equ ZZ_r9, 9\n\t"
+     ".equ ZZ_r10, 10\n\t"
+     ".equ ZZ_r11, 11\n\t"
+     ".equ ZZ_fp, 11\n\t"
+     ".equ ZZ_r12, 12\n\t"
+     ".equ ZZ_ip, 12\n\t"
+     ".equ ZZ_lr, 14\n\t");
+
+/* (".macro <instr> a, b, c, d\n\t"
+    ".long (0xnnnnnnnn | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8) | (ZZ_\\d << 4))\n\t"
+    ".endm\n\t");
+*/
+
+/* something along these lines
+#define IR_OFST(__xx) (__xx & 0x<mask>)
+#define MK_IR(__offset, __flags) (__offset | __flags)
+
+#define FLAG_JMP 1<<0
+#define FLAG_NOTPLCPY 1<<1
+
+#define FLAG_SOMETHING 1<<N
+....
+*/
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
  * executables or running via just-in-time compilation on 32-bit ARM
@@ -54,6 +95,65 @@ int *n;              // current position in emitted abstract syntax tree
                      // emitted and pushed on the stack in the proper
                      // right-to-left order.
 int ld;              // local variable depth
+
+int templ_buf[] = {
+    // LEA
+    0xe28b0000, 0xe24b0000,
+    // IMM
+    0, ???,
+    // JMP
+    0, ???,
+    // JSR
+    0, ???,
+    // BZ
+    0xe3500000,
+    // BNZ
+    0xe3500000, 
+    // ENT
+    0xe92d4800, 0xe28db000, 0xe24dd000,
+    // ADJ
+    0xe28dd000,
+    // LEV
+    2, 0xe28bd000, 0xe8bd8800,
+    // LI
+    1, 0xe5900000,
+    // LC
+    0, 0, //0xe5d00000, 0xe6af0070, 
+    // SI
+    2, 0xe49d1004, 0xe5810000,
+    // SC
+    2, 0xe49d1004, 0xe5c10000,
+    // PSH
+    1, 0xe52d0004,
+    // OR
+    2, 0xe49d1004, 0xe1810000,
+    // XOR
+    2, 0xe49d1004, 0xe0210000,
+    // AND
+    2, 0xe49d1004, 0xe0010000,
+    // EQ
+    4, 0xe49d1004, 0xe1510000, 0x03a00001, 0x13a00000,
+    // NE
+    4, 0xe49d1004, 0xe1510000, 0x03a00000, 0x13a00001,
+    // LT
+    4, 0xe49d1004, 0xe1510000, 0xb3a00001, 0xa3a00000,
+    // GT
+    4, 0xe49d1004, 0xe1510000, 0xc3a00001, 0xd3a00000,
+    // LE
+    4, 0xe49d1004, 0xe1510000, 0xc3a00000, 0xd3a00001,
+    // GE
+    4, 0xe49d1004, 0xe1510000, 0xb3a00000, 0xa3a00001,
+    // SHL
+    2, 0xe49d1004, 0xe1a00011,
+    // SHR
+    2, 0xe49d1004, 0xe1a00051,
+    // ADD
+    2, 0xe49d1004, 0xe0800001,
+    // SUB
+    2, 0xe49d1004, 0xe0410000,
+    // MUL
+    2, 0xe49d1004, 0xe0000091
+};
 
 // identifier
 struct ident_s {
