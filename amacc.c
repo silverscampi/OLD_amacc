@@ -100,12 +100,14 @@ int ld;              // local variable depth
 int templ_buf[] = {
     // LEA
     0xe28b0000, 0xe24b0000,
-    // IMM
-    0, ???,
+    // SIMM
+
+    // LIMM
+    
     // JMP
-    0, ???,
+    
     // JSR
-    0, ???,
+    
     // BZ
     0xe3500000,
     // BNZ
@@ -245,10 +247,11 @@ enum {
      * function calls.
      */
 
-    IMM , /*  1 */
-    /* IMM <num> to put immediate <num> into general register */
+    SIMM , /*  1 */
+    /* SIMM <num> to put <=8-bit immediate <num> into general register */
 
-    // ADD SIMM
+    LIMM,
+    /* LIMM <num> to put >8-bit immediate <num> into general register */
 
     JMP , /*  2 */
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
@@ -447,16 +450,14 @@ void next()
                 printf("%d: %.*s", line, p - lp, lp);
                 lp = p;
                 while (le < e) {
-                    // TODO : add SIMM
                     printf("%8.4s",
-                           & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
+                           & "LEA  SIMM LIMM JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
                              "LI   LC   SI   SC   PSH  "
                              "OR   XOR  AND  EQ   NE   LT   GT   LE   GE   "
                              "SHL  SHR  ADD  SUB  MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
-                    // TODO : adjust this condition if needed, now that SIMM has been added
                     if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
                 }
             }
@@ -934,8 +935,11 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
-        //TODO : add option for SIMM in here
-        *++e = IMM; *++e = n[1];
+        if (0 <= n[1] && n[1] < 256) {
+            *++e = SIMM; *++e = n[1];
+        } else {
+            *++e = LIMM; *++e = n[1];
+        }
         break;
     case Loc: // get the value of variable
         *++e = LEA; *++e = n[1];
@@ -955,8 +959,13 @@ void gen(int *n)
     case Dec:
         gen(n + 2);
         *++e = PSH; *++e = (n[1] == CHAR) ? LC : LI; *++e = PSH;
-        *++e = IMM; *++e = (n[1] >= PTR2) ? sizeof(int) :
-                                            n[1] >= PTR ? tsize[n[1] - PTR] : 1;
+        if (n[1] >= PTR2) {                         //PTR  is 512
+            *++e = LIMM; *++e = sizeof(int);
+        } else if (n[1] >= PTR) {                   //PTR2 is 256
+            *++e = LIMM; *++e = tsize[n[1] - PTR];
+        } else {
+            *++e = SIMM; *++e = 1;
+        }
         *++e = (i == Inc) ? ADD : SUB;
         *++e = (n[1] == CHAR) ? SC : SI;
         break;
@@ -1067,8 +1076,7 @@ void gen(int *n)
         a = 0;
         *e = (int) (e + 7); *++e = PSH; i = *cas; *cas = (int) e;
         gen((int *) n[1]); // condition
-        // TODO : add option for SIMM here
-        if (e[-1] != IMM) fatal("bad case immediate");
+        if (e[-1] != SIMM || e[-1] != LIMM) fatal("bad case immediate");
         *++e = SUB; *++e = BNZ; cas = ++e; *e = i + e[-3];
         if (*(int *) n[2] == Switch) a = cas;
         gen((int *) n[2]); // expression
@@ -1634,7 +1642,6 @@ int *codegen(int *jitmem, int *jitmap)
         je = (int *) jitmap[((int) pc - (int) text) >> 2];
         i = *pc++; // Get current instruction
         // If the instruction is one of the jumps.
-        // TODO : double check this is OK with addition of SIMM/LIMM
         if (i == JSR || i == JMP || i == BZ || i == BNZ) {
             switch (i) {
             case JSR:
@@ -1656,7 +1663,6 @@ int *codegen(int *jitmem, int *jitmap)
         }
         // If the instruction has operand, increment instruction pointer to
         // skip the operand.
-        // TODO : double check this is OK with addition of SIMM/LIMM
         else if (i < LEV) { ++pc; }
     }
     free(iv);
