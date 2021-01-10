@@ -98,15 +98,12 @@ int ld;              // local variable depth
 
 // TODO : MAKE THIS MATCH NEW DESIGN
 int templ_buf[] = {
-    // LEAP
-    1, 0xe28b0000, 
-    // LEAN
-    1, 0xe24b0000,
+    // LEA
+    2, 0xe28b0000, 0xe24b0000,
 
     // SIMM
 
     // LIMM
-    
     
     // JMP
     
@@ -117,12 +114,9 @@ int templ_buf[] = {
     // BNZ
     0xe3500000, 
     
-    // ENTO
-    0xe92d4800, 0xe28db000, 
-    // ENTV
+    // ENT
     0xe92d4800, 0xe28db000, 0xe24dd000,
     
-
     // ADJ
     0xe28dd000,
     // LEV
@@ -221,8 +215,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEAP ,  // LEA positive
-    LEAN ,  // LEA negative
+    LEA ,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -285,8 +278,7 @@ enum {
     BZ  , /*  : conditional jump if general register is zero */
     BNZ , /*  : conditional jump if general register is not zero */
 
-    ENTO ,  // ENT 0 locals
-    ENTV ,  // ENT variable # locals
+    ENT ,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
@@ -1473,8 +1465,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
         switch (i) {
-        case LEAP:
-        case LEAN:
+        case LEA:
             tmp = *pc++;
             if (tmp >= 64 || tmp <= -64) {
                 printf("jit: LEA %d out of bounds\n", tmp); exit(6);
@@ -1499,13 +1490,9 @@ int *codegen(int *jitmem, int *jitmap)
         case BNZ:
             *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
             break;
-        case ENTO:
-        case ENTV:
+        case ENT:
             *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
             tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
-            if (tmp >= 64 || tmp < 0) {
-                printf("jit: ENT %d out of bounds\n", tmp); exit(6);
-            }
             break;
         case ADJ:
             *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
