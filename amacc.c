@@ -24,16 +24,19 @@ asm (".equ ZZ_r0, 0\n\t"
     ".endm\n\t");
 */
 
-/* something along these lines
-#define IR_OFST(__xx) (__xx & 0x<mask>)
-#define MK_IR(__offset, __flags) (__offset | __flags)
+// 000iivct xxxxxxxx
+//    flags \  IR  /
 
-#define FLAG_JMP 1<<0
-#define FLAG_NOTPLCPY 1<<1
+#define IR_OFST(__xx) (__xx & 0xff)
+#define MK_IR(__fl_templ, __fl_copy, __fl_var, __fl_inc1, __fl_inc2, __offset) (__fl_templ | __fl_copy | __fl_var | __fl_inc1 | __fl_inc2 | __offset)
 
-#define FLAG_SOMETHING 1<<N
-....
-*/
+// ^ does multiline syntax work for macros???
+
+#define FLAG_TEMPL  1<<8
+#define FLAG_COPY   1<<9
+#define FLAG_VAR    1<<10
+#define FLAG_INC1   1<<11
+#define FLAG_INC2   1<<12
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -323,11 +326,20 @@ enum {
     PSH , 
     /* PSH pushes the value in general register onto the stack */
 
-    OR  ,   XOR ,   AND , 
-    EQ  ,   NE  , 
-    LT  ,   GT  ,   LE  ,  GE  , 
-    SHL ,   SHR , 
-    ADD ,   SUB ,   MUL , 
+    OR  ,  
+    XOR ,  
+    AND , 
+    EQ  ,   
+    NE  , 
+    LT  ,   
+    GT  ,   
+    LE  ,  
+    GE  , 
+    SHL ,   
+    SHR , 
+    ADD ,   
+    SUB ,   
+    MUL , 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
