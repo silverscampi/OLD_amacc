@@ -26,7 +26,7 @@ asm (".equ ZZ_r0, 0\n\t"
 
 // 000iivct xxxxxxxx
 //    flags \  IR  /
-
+/*
 #define IR_OFST(__xx) (__xx & 0xff)
 #define MK_IR(__fl_templ, __fl_copy, __fl_var, __fl_inc1, __fl_inc2, __offset) (__fl_templ | __fl_copy | __fl_var | __fl_inc1 | __fl_inc2 | __offset)
 
@@ -37,7 +37,7 @@ asm (".equ ZZ_r0, 0\n\t"
 #define FLAG_VAR    1<<10
 #define FLAG_INC1   1<<11
 #define FLAG_INC2   1<<12
-
+*/
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -102,44 +102,50 @@ int ld;              // local variable depth
 // TODO : MAKE THIS MATCH NEW DESIGN
 int templ_buf[] = {
     // LEA
-    2, 0xe28b0000, 0xe24b0000,
+    3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
 
-    // SIMM
+    // SIMM     no difference atm,
+    0, 0x0, 0x0, 0x0, 0x0,
+    // LIMM     and thus no support atm!!
+    0, 0x0, 0x0, 0x0, 0x0,
 
-    // LIMM
-    
     // JMP
+    0, 0x0, 0x0, 0x0, 0x0,
     
     // JSR
-    
+    0, 0x0, 0x0, 0x0, 0x0,
+
     // BZ
-    0xe3500000,
+    1, 0xe3500000, 0x0, 0x0, 0x0,
     // BNZ
-    0xe3500000, 
+    1, 0xe3500000, 0x0, 0x0, 0x0,
     
     // ENT
-    0xe92d4800, 0xe28db000, 0xe24dd000,
+    3, 0xe92d4800, 0xe28db000, 0xe24dd000, 0x0,
     
     // ADJ
-    0xe28dd000,
+    1, 0xe28dd000, 0x0, 0x0, 0x0,
+
     // LEV
-    2, 0xe28bd000, 0xe8bd8800,
+    2, 0xe28bd000, 0xe8bd8800, 0x0, 0x0,
     // LI
-    1, 0xe5900000,
-    // LC
-    0, 0, //0xe5d00000, 0xe6af0070, 
+    1, 0xe5900000, 0x0, 0x0, 0x0,
+    
+    // LC /* !! */
+    0, 0xe5d00000, 0xe6af0070, 0x0, 0x0,
+    
     // SI
-    2, 0xe49d1004, 0xe5810000,
+    2, 0xe49d1004, 0xe5810000, 0x0, 0x0,
     // SC
-    2, 0xe49d1004, 0xe5c10000,
+    2, 0xe49d1004, 0xe5c10000, 0x0, 0x0,
     // PSH
-    1, 0xe52d0004,
+    1, 0xe52d0004, 0x0, 0x0, 0x0,
     // OR
-    2, 0xe49d1004, 0xe1810000,
+    2, 0xe49d1004, 0xe1810000, 0x0, 0x0,
     // XOR
-    2, 0xe49d1004, 0xe0210000,
+    2, 0xe49d1004, 0xe0210000, 0x0, 0x0,
     // AND
-    2, 0xe49d1004, 0xe0010000,
+    2, 0xe49d1004, 0xe0010000, 0x0, 0x0,
     // EQ
     4, 0xe49d1004, 0xe1510000, 0x03a00001, 0x13a00000,
     // NE
@@ -153,15 +159,15 @@ int templ_buf[] = {
     // GE
     4, 0xe49d1004, 0xe1510000, 0xb3a00000, 0xa3a00001,
     // SHL
-    2, 0xe49d1004, 0xe1a00011,
+    2, 0xe49d1004, 0xe1a00011, 0x0, 0x0,
     // SHR
-    2, 0xe49d1004, 0xe1a00051,
+    2, 0xe49d1004, 0xe1a00051, 0x0, 0x0,
     // ADD
-    2, 0xe49d1004, 0xe0800001,
+    2, 0xe49d1004, 0xe0800001, 0x0, 0x0,
     // SUB
-    2, 0xe49d1004, 0xe0410000,
+    2, 0xe49d1004, 0xe0410000, 0x0, 0x0,
     // MUL
-    2, 0xe49d1004, 0xe0000091
+    2, 0xe49d1004, 0xe0000091, 0x0, 0x0
 };
 
 // identifier
