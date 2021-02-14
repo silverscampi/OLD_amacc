@@ -27,7 +27,6 @@ asm (".equ ZZ_r0, 0\n\t"
 // 000iivct xxxxxxxx
 //    flags \  IR  /
 /*
-#define IR_OFST(__xx) (__xx & 0xff)
 #define MK_IR(__fl_templ, __fl_copy, __fl_var, __fl_inc1, __fl_inc2, __offset) (__fl_templ | __fl_copy | __fl_var | __fl_inc1 | __fl_inc2 | __offset)
 
 // ^ does multiline syntax work for macros???
@@ -38,6 +37,10 @@ asm (".equ ZZ_r0, 0\n\t"
 #define FLAG_INC1   1<<11
 #define FLAG_INC2   1<<12
 */
+
+
+#define IR_OFST(__ir) (__ir & 0x00ff)
+#define IR_OFST_BUF(__ir) ((__ir & 0x00ff) * 5) // change 
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +102,6 @@ int *n;              // current position in emitted abstract syntax tree
                      // right-to-left order.
 int ld;              // local variable depth
 
-// TODO : MAKE THIS MATCH NEW DESIGN
 int templ_buf[] = {
     // LEA
     3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
@@ -131,8 +133,8 @@ int templ_buf[] = {
     // LI
     1, 0xe5900000, 0x0, 0x0, 0x0,
     
-    // LC /* !! */
-    0, 0xe5d00000, 0xe6af0070, 0x0, 0x0,
+    // LC 
+    1, 0xe5d00000, 0xe6af0070, 0x0, 0x0,
     
     // SI
     2, 0xe49d1004, 0xe5810000, 0x0, 0x0,
@@ -314,7 +316,7 @@ enum {
      * address which is stored in general register before execution.
      */
 
-    LC  , 
+    LC  = 0x030b, 
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
@@ -2315,6 +2317,8 @@ int main(int argc, char **argv)
     }
     if (argc > 0 && **argv == '-' && streq(*argv, "-fsigned-char")) {
         signed_char = 1; --argc; ++argv;
+        // Enable emission of second word (sign ext) for LC IR
+        templ_buf[IR_OFST_BUF(LC)] = 2;
     }
     if (argc > 0 && **argv == '-' && (*argv)[1] == 'o') {
         elf = 1; --argc; ++argv;
