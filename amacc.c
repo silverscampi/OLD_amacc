@@ -2222,7 +2222,7 @@ int elf32(int poolsz, int *main, int elf_fd)
     if ((int *) je >= jitmap) die("elf32: jitmem too small");
 
     // Relocate _start() stub.
-    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[STRT - IR_OFST(OPEN)] - code_addr - 0x28);
+    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[IR_OFST(STRT) - IR_OFST(OPEN)] - code_addr - 0x28);
     *((int *) (code + 0x44)) =
         reloc_bl(jitmap[((int) main - (int) text) >> 2] - (int) code - 0x44);
 
