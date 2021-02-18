@@ -289,7 +289,7 @@ enum {
     BZ  = 0x1305, /*  : conditional jump if general register is zero */
     BNZ = 0x1306, /*  : conditional jump if general register is not zero */
 
-    ENT = 0x0307,
+    ENT = 0x0f07,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
