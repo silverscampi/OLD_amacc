@@ -24,23 +24,28 @@ asm (".equ ZZ_r0, 0\n\t"
     ".endm\n\t");
 */
 
-// 000iivct xxxxxxxx
+// 0lliivct xxxxxxxx
 //    flags \  IR  /
 /*
 #define MK_IR(__fl_templ, __fl_copy, __fl_var, __fl_inc1, __fl_inc2, __offset) (__fl_templ | __fl_copy | __fl_var | __fl_inc1 | __fl_inc2 | __offset)
 
-// ^ does multiline syntax work for macros???
-
-#define FLAG_TEMPL  1<<8
-#define FLAG_COPY   1<<9
-#define FLAG_VAR    1<<10
-#define FLAG_INC1   1<<11
-#define FLAG_INC2   1<<12
 */
 
+#define MASK_T  0x0100;
+#define MASK_C  0x0200;
+#define MASK_V  0x0400;
+#define MASK_L  0x6000;
+#define MASK_I  0x1800;
 
 #define IR_OFST(__ir) (__ir & 0x00ff)
-#define IR_OFST_BUF(__ir) ((__ir & 0x00ff) * 5) // change 
+#define IR_OFST_BUF(__ir) ((__ir & 0x00ff) * 5) // change   * n    as needed 
+
+#define GET_FLAG_T(__ir) ((__ir & MASK_T) >> 8)
+#define GET_FLAG_C(__ir) ((__ir & MASK_C) >> 9)
+#define GET_FLAG_V(__ir) ((__ir & MASK_V) >> 10)
+#define GET_FLAG_I(__ir) ((__ir & MASK_I) >> 11)
+#define GET_FLAG_L(__ir) ((__ir & MASK_L) >> 13)
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1472,7 +1477,6 @@ static int __mod_trampoline(int a, int b) {
 int *codegen(int *jitmem, int *jitmap)
 {
     // write templ_buf address to dedicated system register
-    /*
     __asm__ (
         "mcr p15, #0, %0, cr12, cr0, #0"
         // outs
@@ -1481,7 +1485,6 @@ int *codegen(int *jitmem, int *jitmap)
         : "r" (templ_buf)
         // clobbers
     );
-    */
     // no longer need to pass tbp to tmpl instr
 
     int i, tmp;
