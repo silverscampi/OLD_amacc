@@ -226,7 +226,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA = 0x0f00,
+    LEA = 0x4f00,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -261,7 +261,7 @@ enum {
      * function calls.
      */
 
-    SIMM = 0x0f01,  // short IMM
+    SIMM = 0x2f01,  // short IMM
     /* SIMM <num> to put <=8-bit immediate <num> into general register */
 
     LIMM = 0x0002,   // long IMM
@@ -289,7 +289,7 @@ enum {
     BZ  = 0x1305, /*  : conditional jump if general register is zero */
     BNZ = 0x1306, /*  : conditional jump if general register is not zero */
 
-    ENT = 0x0f07,
+    ENT = 0x2f07,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
@@ -297,7 +297,7 @@ enum {
      */
     
 
-    ADJ = 0x0f08, 
+    ADJ = 0x2f08, 
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
