@@ -19,10 +19,25 @@ asm (".equ ZZ_r0, 0\n\t"
      ".equ ZZ_ip, 12\n\t"
      ".equ ZZ_lr, 14\n\t");
 
-/* (".macro <instr> a, b, c, d\n\t"
-    ".long (0xnnnnnnnn | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8) | (ZZ_\\d << 4))\n\t"
-    ".endm\n\t");
-*/
+asm (".macro tpc a, b\n\t"
+     ".long (0xf7c00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpi a, b\n\t"
+     ".long (0xf7c00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpcii a, b, c\n\t"
+     ".long (0xf7d00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpcv1i a, b, c\n\t"
+     ".long (0xf7d00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+     asm (".macro tpcv2i a, b, c\n\t"
+     ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
 
 // 0lliivct xxxxxxxx
 //    flags \  IR  /
@@ -1565,9 +1580,10 @@ int *codegen(int *jitmem, int *jitmap)
                 if (GET_FLAG_T(i)) {
                     // @@@ tpcii @@@
                     __asm__(
-                        "tpcii %[cbp], %[ir]\n\t"
+                        "tpcii %[cbp], %[ir], %[pc]\n\t"
                         //outputs
-                        : [cbp] "+r" (je)
+                        : [cbp] "+r" (je),
+                          [pc]  "+r" (pc)
                         //inputs
                         : [ir]  "r"  (i)
                         //clobbers
