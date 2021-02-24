@@ -1,3 +1,69 @@
+// &&&&&&&&&&&&&&&&&&&&&&&&&
+//      MACROS
+// &&&&&&&&&&&&&&&&&&&&&&&&&
+
+asm (".equ ZZ_r0, 0\n\t"
+     ".equ ZZ_r1, 1\n\t"
+     ".equ ZZ_r2, 2\n\t"
+     ".equ ZZ_r3, 3\n\t"
+     ".equ ZZ_r4, 4\n\t"
+     ".equ ZZ_r5, 5\n\t"
+     ".equ ZZ_r6, 6\n\t"
+     ".equ ZZ_r7, 7\n\t"
+     ".equ ZZ_r8, 8\n\t"
+     ".equ ZZ_r9, 9\n\t"
+     ".equ ZZ_r10, 10\n\t"
+     ".equ ZZ_r11, 11\n\t"
+     ".equ ZZ_fp, 11\n\t"
+     ".equ ZZ_r12, 12\n\t"
+     ".equ ZZ_ip, 12\n\t"
+     ".equ ZZ_lr, 14\n\t");
+
+asm (".macro tpc a, b\n\t"
+     ".long (0xf7c00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpi a, b\n\t"
+     ".long (0xf7c00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpcii a, b, c\n\t"
+     ".long (0xf7d00000 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+asm (".macro tpcv1i a, b, c\n\t"
+     ".long (0xf7d00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+     asm (".macro tpcv2i a, b, c\n\t"
+     ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
+// 0lliivct xxxxxxxx
+//    flags \  IR  /
+/*
+#define MK_IR(__fl_templ, __fl_copy, __fl_var, __fl_inc1, __fl_inc2, __offset) (__fl_templ | __fl_copy | __fl_var | __fl_inc1 | __fl_inc2 | __offset)
+*/
+
+#define MASK_T  0x0100
+#define MASK_C  0x0200
+#define MASK_V  0x0400
+#define MASK_L  0x6000
+#define MASK_I  0x1800
+
+#define IR_OFST(__ir) (__ir & 0x00ff)
+#define IR_OFST_BUF(__ir) ((__ir & 0x00ff) * 5) // change   * n    as needed 
+
+#define GET_FLAG_T(__ir) ((__ir & MASK_T) >> 8)
+#define GET_FLAG_C(__ir) ((__ir & MASK_C) >> 9)
+#define GET_FLAG_V(__ir) ((__ir & MASK_V) >> 10)
+#define GET_FLAG_I(__ir) ((__ir & MASK_I) >> 11)
+#define GET_FLAG_L(__ir) ((__ir & MASK_L) >> 13)
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
 /*
  * AMaCC is capable of compiling (subset of) C source files into GNU/Linux
  * executables or running via just-in-time compilation on 32-bit ARM
