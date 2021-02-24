@@ -1643,7 +1643,7 @@ int *codegen(int *jitmem, int *jitmap)
             break;
         }
         else {
-            printf("code generation failed for %d!\n", i);
+            printf("code generation failed for %x!\n", i);
             free(iv);
             return 0;
         }
