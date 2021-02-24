@@ -1491,6 +1491,8 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    printf("\ntempl_buf: %x\n\n", templ_buf);
+    fflush(stdout);
     // write templ_buf address to dedicated system register
     __asm__ (
         "mcr p15, #0, %0, cr12, cr0, #0"
@@ -1520,15 +1522,20 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
 
+        printf("IR: %x\n", i);
+        fflush(stdout);
+
         // is tpc?  (most common)
         if (i >> 8 == 0x03) {
+            printf("INSTRUCTION: tpc\n");
+            fflush(stdout);
             // @@@ tpc @@@
             __asm__ (
                 "tpc %[cbp], %[ir]\n\t"
                 //outputs
                 : [cbp] "+r" (je)
                 //inputs
-                : [ir]  "r"  (i)
+                : [ir]  "r"  (IR_OFST(i))
                 //clobbers
                 : "memory"
             );
@@ -1536,6 +1543,8 @@ int *codegen(int *jitmem, int *jitmap)
         // is var-type?
         } else if (GET_FLAG_V(i)) {
             if (i >> 8 == 0x4f) {
+                printf("INSTRUCTION: tpcv2i\n");
+                fflush(stdout);
                 // @@@ tpcv2i @@@
                 __asm__(
                     "tpcv2i %[cbp], %[ir], %[pc]\n\t"
@@ -1543,12 +1552,16 @@ int *codegen(int *jitmem, int *jitmap)
                     : [cbp] "+r" (je),
                         [pc]  "+r" (pc)
                     //inputs
-                    : [ir]  "r"  (i)
+                    : [ir]  "r"  (IR_OFST(i))
                     //clobbers
                     : "memory"
                 );
 
             } else {
+                printf("INSTRUCTION: tpcv1i\n");
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, i, pc);
+                printf("\t----------\n");
+                fflush(stdout);
                 // @@@ tpcv1i @@@
                 __asm__(
                     "tpcv1i %[cbp], %[ir], %[pc]\n\t"
@@ -1556,12 +1569,16 @@ int *codegen(int *jitmem, int *jitmap)
                     : [cbp] "+r" (je),
                         [pc]  "+r" (pc)
                     //inputs
-                    : [ir]  "r"  (i)
+                    : [ir]  "r"  (IR_OFST(i))
                     //clobbers
                     : "memory"
                 );
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, i, pc);
+                fflush(stdout);
             }
         } else {
+            printf("INSTRUCTION: tpi\n");
+            fflush(stdout);
             // is tpi?
             if (i >> 8 == 0x09) {
                 // @@@ tpi @@@
@@ -1570,7 +1587,7 @@ int *codegen(int *jitmem, int *jitmap)
                     //outputs
                     : [cbp] "+r" (je)
                     //inputs
-                    : [ir]  "r"  (i)
+                    : [ir]  "r"  (IR_OFST(i))
                     //clobbers
                     : "memory"
                 );
@@ -1578,6 +1595,8 @@ int *codegen(int *jitmem, int *jitmap)
             else {
                 // is templatable at all?
                 if (GET_FLAG_T(i)) {
+                    printf("INSTRUCTION: tpcii\n");
+                    fflush(stdout);
                     // @@@ tpcii @@@
                     __asm__(
                         "tpcii %[cbp], %[ir], %[pc]\n\t"
@@ -1585,7 +1604,7 @@ int *codegen(int *jitmem, int *jitmap)
                         : [cbp] "+r" (je),
                           [pc]  "+r" (pc)
                         //inputs
-                        : [ir]  "r"  (i)
+                        : [ir]  "r"  (IR_OFST(i))
                         //clobbers
                         : "memory"
                     );
@@ -1593,60 +1612,64 @@ int *codegen(int *jitmem, int *jitmap)
                 } else {
                     // NO SUPPORT, FALL THROUGH
                     // just remove this else i guess
+                    printf("INSTRUCTION: no support!\n");
+                    fflush(stdout);
+
+                    if (i == LIMM) {
+                        tmp = *pc++;
+                        if (0 <= tmp && tmp < 256)
+                            *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
+                        else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
+                    } else if (i >= OPEN && i <= EXIT) {
+                        switch (i) {
+                            case OPEN: tmp = (int) &open;    break;
+                            case READ: tmp = (int) &read;    break;
+                            case WRIT: tmp = (int) &write;   break;
+                            case CLOS: tmp = (int) &close;   break;
+                            case PRTF: tmp = (int) &printf;  break;
+                            case MALC: tmp = (int) &malloc;  break;
+                            case FREE: tmp = (int) &free;    break;
+                            case MSET: tmp = (int) &memset;  break;
+                            case MCMP: tmp = (int) &memcmp;  break;
+                            case MCPY: tmp = (int) &memcpy;  break;
+                            case MMAP: tmp = (int) &mmap;    break;
+                            case BSCH: tmp = (int) &bsearch; break;
+                            case DIV:  tmp = (int) &__div_trampoline;     break;
+                            case MOD:  tmp = (int) &__mod_trampoline;     break;
+                            case EXIT: tmp = (int) &exit;    break;
+                            default:
+                                if (elf) {
+                                    tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
+                                } else {
+                                    printf("Detected syscall other than supported ones! : %d\n", i);
+                                    fflush(stdout);
+                                    abort();
+                                }
+                            }
+
+                            if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
+                            i = *pc;
+                            if (i > 10) die("codegen: no support for 10+ arguments");
+                            while (i > 0) *je++ = 0xe49d0004 | (--i << 12); // pop r(i-1)
+                            i = *pc++;
+                            if (i > 4) *je++ = 0xe92d03f0;               // push {r4-r9}
+                            *je++ = 0xe28fe000;                          // add lr, pc, #0
+                            if (!imm0) imm0 = je;
+                            *il++ = (int) je++ + 1;
+                            *iv++ = tmp;
+                            if (i > 4) *je++ = 0xe28dd018;              // add sp, sp, #24
+                            break;
+                    } else {
+                        printf("code generation failed for %x!\n", i);
+                        free(iv);
+                        return 0;
+                    }
                 }
             }
         }
 
-        if (i == LIMM) {
-            tmp = *pc++;
-            if (0 <= tmp && tmp < 256)
-                *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
-            else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
-        } else if (i >= OPEN && i <= EXIT) {
-            switch (i) {
-                case OPEN: tmp = (int) &open;    break;
-                case READ: tmp = (int) &read;    break;
-                case WRIT: tmp = (int) &write;   break;
-                case CLOS: tmp = (int) &close;   break;
-                case PRTF: tmp = (int) &printf;  break;
-                case MALC: tmp = (int) &malloc;  break;
-                case FREE: tmp = (int) &free;    break;
-                case MSET: tmp = (int) &memset;  break;
-                case MCMP: tmp = (int) &memcmp;  break;
-                case MCPY: tmp = (int) &memcpy;  break;
-                case MMAP: tmp = (int) &mmap;    break;
-                case BSCH: tmp = (int) &bsearch; break;
-                case DIV:  tmp = (int) &__div_trampoline;     break;
-                case MOD:  tmp = (int) &__mod_trampoline;     break;
-                case EXIT: tmp = (int) &exit;    break;
-                default:
-                    if (elf) {
-                        tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
-                    } else {
-                        printf("Detected syscall other than supported ones! : %d\n", i);
-                        fflush(stdout);
-                        abort();
-                    }
-            }
-
-            if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
-            i = *pc;
-            if (i > 10) die("codegen: no support for 10+ arguments");
-            while (i > 0) *je++ = 0xe49d0004 | (--i << 12); // pop r(i-1)
-            i = *pc++;
-            if (i > 4) *je++ = 0xe92d03f0;               // push {r4-r9}
-            *je++ = 0xe28fe000;                          // add lr, pc, #0
-            if (!imm0) imm0 = je;
-            *il++ = (int) je++ + 1;
-            *iv++ = tmp;
-            if (i > 4) *je++ = 0xe28dd018;              // add sp, sp, #24
-            break;
-        }
-        else {
-            printf("code generation failed for %x!\n", i);
-            free(iv);
-            return 0;
-        }
+        
+        
         
 
         if (imm0) {
@@ -1677,6 +1700,10 @@ int *codegen(int *jitmem, int *jitmap)
             imm0 = 0;
             genpool = 0;
         }
+
+        printf("\n\n");
+        fflush(stdout);
+
     }
     if (il > immloc) die("codegen: not terminated by a LEV");
     tje = je;
