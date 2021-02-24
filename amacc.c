@@ -245,7 +245,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA , /*  0 */
+    LEA = 0x4f00,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -280,10 +280,13 @@ enum {
      * function calls.
      */
 
-    IMM , /*  1 */
-    /* IMM <num> to put immediate <num> into general register */
+    SIMM = 0x2f01,  // short IMM
+    /* SIMM <num> to put <=8-bit immediate <num> into general register */
 
-    JMP , /*  2 */
+    LIMM = 0x0002,   // long IMM
+    /* LIMM <num> to put >8-bit immediate <num> into general register */
+
+    JMP = 0x0903, 
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
@@ -291,7 +294,7 @@ enum {
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
 
-    JSR , /*  3 */
+    JSR = 0x0904,
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -302,23 +305,23 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  , /*  4 : conditional jump if general register is zero */
-    BNZ , /*  5 : conditional jump if general register is not zero */
+    BZ  = 0x1305, /*  : conditional jump if general register is zero */
+    BNZ = 0x1306, /*  : conditional jump if general register is not zero */
 
-    ENT , /*  6 */
+    ENT = 0x2f07,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ , /*  7 */
+    ADJ = 0x2f08,
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
-    LEV , /*  8 */
+    LEV = 0x0309,
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
@@ -326,34 +329,43 @@ enum {
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
 
-    LI  , /*  9 */
+    LI  = 0x030a, 
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    LC  , /* 10 */
+   LC  = 0x030b, 
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  , /* 11 */
+    SI  = 0x030c, 
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  , /* 12 */
+    SC  = 0x030d, 
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH , /* 13 */
+    PSH = 0x030e, 
     /* PSH pushes the value in general register onto the stack */
 
-    OR  , /* 14 */  XOR , /* 15 */  AND , /* 16 */
-    EQ  , /* 17 */  NE  , /* 18 */
-    LT  , /* 19 */  GT  , /* 20 */  LE  , /* 21 */ GE  , /* 22 */
-    SHL , /* 23 */  SHR , /* 24 */
-    ADD , /* 25 */  SUB , /* 26 */  MUL , /* 27 */
+    OR  = 0x030f,  
+    XOR = 0x0310,  
+    AND = 0x0311, 
+    EQ  = 0x0312,   
+    NE  = 0x0313, 
+    LT  = 0x0314,   
+    GT  = 0x0315,   
+    LE  = 0x0316,  
+    GE  = 0x0317, 
+    SHL = 0x0318,   
+    SHR = 0x0319, 
+    ADD = 0x031a,   
+    SUB = 0x031b,   
+    MUL = 0x031c, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
@@ -364,9 +376,26 @@ enum {
      */
 
     /* system call shortcuts */
-    OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
-    CLCA, /* clear cache, used by JIT compilation */
-    INVALID
+    OPEN = 0x001d,
+    READ = 0x001e,
+    WRIT = 0x001f,
+    CLOS = 0x0020,
+    PRTF = 0x0021,
+    MALC = 0x0022,
+    FREE = 0x0023,
+    MSET = 0x0024,
+    MCMP = 0x0025,
+    MCPY = 0x0026,
+    MMAP = 0x0027,
+    DSYM = 0x0028,
+    BSCH = 0x0029,
+    STRT = 0x002a,
+    DLOP = 0x002b,
+    DIV  = 0x002c,
+    MOD  = 0x002d,
+    EXIT = 0x002e,
+    CLCA = 0x002f, /* clear cache, used by JIT compilation */
+    INVALID = 0x0030
 };
 
 // types
@@ -481,14 +510,14 @@ void next()
                 lp = p;
                 while (le < e) {
                     printf("%8.4s",
-                           & "LEA  IMM  JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
+                           & "LEA  SIMM LIMM JMP  JSR  BZ   BNZ  ENT  ADJ  LEV  "
                              "LI   LC   SI   SC   PSH  "
                              "OR   XOR  AND  EQ   NE   LT   GT   LE   GE   "
                              "SHL  SHR  ADD  SUB  MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
-                    if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
+                    if (*le <= IR_OFST(ADJ)) printf(" %d\n", *++le); else printf("\n");
                 }
             }
             ++line;
@@ -965,7 +994,11 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
-        *++e = IMM; *++e = n[1];
+        if (0 <= n[1] && n[1] < 256) {
+            *++e = SIMM; *++e = n[1];
+        } else {
+            *++e = LIMM; *++e = n[1];
+        }
         break;
     case Loc: // get the value of variable
         *++e = LEA; *++e = n[1];
@@ -985,8 +1018,13 @@ void gen(int *n)
     case Dec:
         gen(n + 2);
         *++e = PSH; *++e = (n[1] == CHAR) ? LC : LI; *++e = PSH;
-        *++e = IMM; *++e = (n[1] >= PTR2) ? sizeof(int) :
-                                            n[1] >= PTR ? tsize[n[1] - PTR] : 1;
+        if (n[1] >= PTR2) {                         //PTR  is 512
+            *++e = LIMM; *++e = sizeof(int);
+        } else if (n[1] >= PTR) {                   //PTR2 is 256
+            *++e = LIMM; *++e = tsize[n[1] - PTR];
+        } else {
+            *++e = SIMM; *++e = 1;
+        }
         *++e = (i == Inc) ? ADD : SUB;
         *++e = (n[1] == CHAR) ? SC : SI;
         break;
@@ -1097,7 +1135,7 @@ void gen(int *n)
         a = 0;
         *e = (int) (e + 7); *++e = PSH; i = *cas; *cas = (int) e;
         gen((int *) n[1]); // condition
-        if (e[-1] != IMM) fatal("bad case immediate");
+        if (e[-1] != SIMM || e[-1] != LIMM) fatal("bad case immediate");
         *++e = SUB; *++e = BNZ; cas = ++e; *e = i + e[-3];
         if (*(int *) n[2] == Switch) a = cas;
         gen((int *) n[2]); // expression
@@ -1451,6 +1489,17 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    // write templ_buf address to dedicated system register
+    __asm__ (
+        "mcr p15, #0, %0, cr12, cr0, #0"
+        // outs
+        :
+        // ins
+        : "r" (templ_buf)
+        // clobbers
+    );
+    // no longer need to pass tbp to tmpl instr
+
     int i, tmp;
     int *je, *tje;    // current position in emitted native code
     int *immloc, *il;
@@ -1479,7 +1528,8 @@ int *codegen(int *jitmem, int *jitmap)
             else
                 *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
             break;
-        case IMM:
+        case SIMM:
+        case LIMM:
             tmp = *pc++;
             if (0 <= tmp && tmp < 256)
                 *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
@@ -1583,7 +1633,7 @@ int *codegen(int *jitmem, int *jitmap)
                     case EXIT: tmp = (int) &exit;    break;
                     default:
                         if (elf) {
-                            tmp = (int) plt_func_addr[i - OPEN];
+                            tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
                         } else {
                             printf("Detected syscall other than supported ones! : %d\n", i);
                             fflush(stdout);
@@ -1605,7 +1655,7 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else {
-                printf("code generation failed for %d!\n", i);
+                printf("code generation failed for %x!\n", i);
                 free(iv);
                 return 0;
             }
@@ -1670,8 +1720,8 @@ int *codegen(int *jitmem, int *jitmap)
                    reloc_imm(jitmap[(tmp - (int) text) >> 2] - (int) je));
         }
         // If the instruction has operand, increment instruction pointer to
-        // skip he operand.
-        else if (i < LEV) { ++pc; }
+        // skip the operand.
+        else if (i < IR_OFST(LEV)) { ++pc; }
     }
     free(iv);
     return tje;
@@ -1906,7 +1956,7 @@ int elf32(int poolsz, int *main, int elf_fd)
      * (4 instruction * 4 bytes), so the first codegen and second codegen
      * have consistent code_size.
      */
-    int FUNC_NUM = EXIT - OPEN + 1;
+    int FUNC_NUM = IR_OFST(EXIT) - IR_OFST(OPEN) + 1;
     plt_func_addr = malloc(sizeof(char *) * FUNC_NUM);
     for (i = 0; i < FUNC_NUM; i++)
         plt_func_addr[i] = o + i * 16;
@@ -2060,11 +2110,11 @@ int elf32(int poolsz, int *main, int elf_fd)
     char *ldso = append_strtab(&data, "libdl.so.2");
     char *libgcc_s = append_strtab(&data, "libgcc_s.so.1");
 
-    int *func_entries = (int *) malloc(sizeof(int) * (EXIT + 1));
+    int *func_entries = (int *) malloc(sizeof(int) * (IR_OFST(EXIT) + 1));
     if (!func_entries) die("elf32: could not malloc func_entries table");
 
-    for (i = OPEN; i <= EXIT; i++)
-        func_entries[i] = append_strtab(&data, scnames[i - OPEN]) - dynstr_addr;
+    for (i = IR_OFST(OPEN); i <= IR_OFST(EXIT); i++)
+        func_entries[i] = append_strtab(&data, scnames[i - IR_OFST(OPEN)]) - dynstr_addr;
 
     int dynstr_size = data - dynstr_addr;
     o += dynstr_size;
@@ -2075,7 +2125,7 @@ int elf32(int poolsz, int *main, int elf_fd)
     memset(data, 0, SYM_ENT_SIZE);
     data += SYM_ENT_SIZE;
 
-    for (i = OPEN; i <= EXIT; i++)
+    for (i = IR_OFST(OPEN); i <= IR_OFST(EXIT); i++)
         append_func_sym(&data, func_entries[i]);
 
     int dynsym_size = SYM_ENT_SIZE * (FUNC_NUM + 1);
@@ -2191,7 +2241,7 @@ int elf32(int poolsz, int *main, int elf_fd)
     if ((int *) je >= jitmap) die("elf32: jitmem too small");
 
     // Relocate _start() stub.
-    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[STRT - OPEN] - code_addr - 0x28);
+    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[IR_OFST(STRT) - IR_OFST(OPEN)] - code_addr - 0x28);
     *((int *) (code + 0x44)) =
         reloc_bl(jitmap[((int) main - (int) text) >> 2] - (int) code - 0x44);
 
@@ -2286,6 +2336,8 @@ int main(int argc, char **argv)
     }
     if (argc > 0 && **argv == '-' && streq(*argv, "-fsigned-char")) {
         signed_char = 1; --argc; ++argv;
+        // Enable emission of second word (sign ext) for LC IR
+        templ_buf[IR_OFST_BUF(LC)] = 2;
     }
     if (argc > 0 && **argv == '-' && (*argv)[1] == 'o') {
         elf = 1; --argc; ++argv;
@@ -2357,7 +2409,7 @@ int main(int argc, char **argv)
     }
 
     // add library to symbol table
-    for (i = OPEN; i < INVALID; i++) {
+    for (i = IR_OFST(OPEN); i < IR_OFST(INVALID); i++) {
         next(); id->class = Syscall; id->type = INT; id->val = i;
     }
     next(); id->tk = Char; // handle void type
