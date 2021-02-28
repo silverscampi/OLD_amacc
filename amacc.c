@@ -516,8 +516,8 @@ void next()
                              "SHL  SHR  ADD  SUB  MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
-                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
-                    if (*le <= IR_OFST(ADJ)) printf(" %d\n", *++le); else printf("\n");
+                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [IR_OFST(*++le) * 5]);
+                    if (IR_OFST(*le) <= IR_OFST(ADJ)) printf(" %d\n", IR_OFST(*++le)); else printf("\n");
                 }
             }
             ++line;
@@ -1586,6 +1586,25 @@ int *codegen(int *jitmem, int *jitmap)
                 : "memory"
             );
 
+        // tpcv1i
+        } else if (i >> 8 == 0x2f) {
+            printf("INSTRUCTION: tpcv1i\n");
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, IR_OFST(i), pc);
+                printf("\t----------\n");
+                fflush(stdout);
+                // @@@ tpcv1i @@@
+                __asm__(
+                    "tpcv1i %[cbp], %[ir], %[pc]\n\t"
+                    //outputs
+                    : [cbp] "+r" (je),
+                      [pc]  "+r" (pc)
+                    //inputs
+                    : [ir]  "r"  (IR_OFST(i))
+                    //clobbers
+                    : "memory"
+                );
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, IR_OFST(i), pc);
+                fflush(stdout);
         } else {
             switch (i) {    
                 case LEA:
@@ -1598,7 +1617,7 @@ int *codegen(int *jitmem, int *jitmap)
                     else
                         *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
                     break;
-                case SIMM:
+                // case SIMM:
                 case LIMM:
                     tmp = *pc++;
                     if (0 <= tmp && tmp < 256)
@@ -1617,6 +1636,7 @@ int *codegen(int *jitmem, int *jitmap)
                     *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
                     break;
                 */
+               /*
                 case ENT:
                     *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
                     tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
@@ -1627,7 +1647,7 @@ int *codegen(int *jitmem, int *jitmap)
                 case ADJ:
                     *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
                     break;
-                
+                */
                 /*
                 case LEV:
                     *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
