@@ -39,6 +39,10 @@ asm (".macro tpcv2i a, b, c\n\t"
      ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
+asm (".macro tpcv1si a, b, c\n\t"
+     ".long (0xf7d00003 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
+     ".endm\n\t");
+
 // 0lliivct xxxxxxxx
 //    flags \  IR  /
 /*
@@ -308,14 +312,14 @@ enum {
     BZ  = 0x1305, /*  : conditional jump if general register is zero */
     BNZ = 0x1306, /*  : conditional jump if general register is not zero */
 
-    ENT = 0x2f07,
+    ENT = 0xaf07,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ = 0x2f08,
+    ADJ = 0xaf08,
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
@@ -994,17 +998,11 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
-    printf("gen.Num: n[1] = %d\n", n[1]);
-    fflush(stdout);
-    int *prev_e = e;
         if (0 <= n[1] && n[1] < 256) {
             *++e = SIMM; *++e = n[1];
         } else {
             *++e = LIMM; *++e = n[1];
         }
-    printf("e_0 : %04x\n", *++prev_e);
-    printf("e_1 : %04x\n", *++prev_e);
-    fflush(stdout);
         break;
     case Loc: // get the value of variable
         *++e = LEA; *++e = n[1];
@@ -1589,15 +1587,15 @@ int *codegen(int *jitmem, int *jitmap)
                 : "memory"
             );
 
-        // tpcv1i
-        } else if (i >> 8 == 0x2f) {
-            printf("INSTRUCTION: tpcv1i\n");
+        // tpcv1si
+        } else if (i >> 8 == 0xaf) {
+            printf("INSTRUCTION: tpcv1si\n");
                 printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
                 printf("\t----------\n");
                 fflush(stdout);
-                // @@@ tpcv1i @@@
+                // @@@ tpcv1si @@@
                 __asm__(
-                    "tpcv1i %[cbp], %[ir], %[pc]\n\t"
+                    "tpcv1si %[cbp], %[ir], %[pc]\n\t"
                     //outputs
                     : [cbp] "+r" (je),
                       [pc]  "+r" (pc)
@@ -1620,9 +1618,10 @@ int *codegen(int *jitmem, int *jitmap)
                     else
                         *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
                     break;
-                // case SIMM:
+                case SIMM:
                 case LIMM:
                     tmp = *pc++;
+                    
                     if (0 <= tmp && tmp < 256)
                         *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
                     else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
