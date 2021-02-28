@@ -1583,11 +1583,11 @@ int *codegen(int *jitmem, int *jitmap)
             fflush(stdout);
             // @@@ tpi @@@
             __asm__(
-                "tpi %[cbp], %[ir]\n\t"
+                "tpi %[cbp], %[pc]\n\t"
                 //outputs
                 : [cbp] "+r" (je)
                 //inputs
-                : [ir]  "r"  (IR_OFST(i))
+                : [pc]  "r"  (pc)
                 //clobbers
                 : "memory"
             );
