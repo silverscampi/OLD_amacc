@@ -35,7 +35,7 @@ asm (".macro tpcv1i a, b, c\n\t"
      ".long (0xf7d00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-     asm (".macro tpcv2i a, b, c\n\t"
+asm (".macro tpcv2i a, b, c\n\t"
      ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
@@ -1517,149 +1517,179 @@ int *codegen(int *jitmem, int *jitmap)
         // "pc - text" gets the index of IR.
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
-        switch (i) {
-        case LEA:
-            tmp = *pc++;
-            if (tmp >= 64 || tmp <= -64) {
-                printf("jit: LEA %d out of bounds\n", tmp); exit(6);
-            }
-            if (tmp >= 0)
-                *je++ = 0xe28b0000 | tmp * 4;    // add     r0, fp, #(tmp)
-            else
-                *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
-            break;
-        case SIMM:
-        case LIMM:
-            tmp = *pc++;
-            if (0 <= tmp && tmp < 256)
-                *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
-            else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
-            break;
-        case JSR:
-        case JMP:
-            pc++; je++; // postponed till second pass
-            break;
-        case BZ:
-        case BNZ:
-            *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
-            break;
-        case ENT:
-            *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
-            tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
-            if (tmp >= 64 || tmp < 0) {
-                printf("jit: ENT %d out of bounds\n", tmp); exit(6);
-            }
-            break;
-        case ADJ:
-            *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
-            break;
-        case LEV:
-            *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
-            break;
-        case LI:
-            *je++ = 0xe5900000;                  // ldr r0, [r0]
-            break;
-        case LC:
-            *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
-            break;
-        case SI:
-            *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
-            break;
-        case SC:
-            *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
-            break;
-        case PSH:
-            *je++ = 0xe52d0004;                       // push {r0}
-            break;
-        case OR:
-            *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
-            break;
-        case XOR:
-            *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
-            break;
-        case AND:
-            *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
-            break;
-        case SHL:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
-            break;
-        case SHR:
-            *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
-            break;
-        case ADD:
-            *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
-            break;
-        case SUB:
-            *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
-            break;
-        case MUL:
-            *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
-            break;
-        case CLCA:
-            *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
-                                                    // ldr r1, [sp]
-            *je++ = 0xe3a0780f; *je++ = 0xe2877002; // mov r7, #0xf0000
-                                                    // add r7, r7, #2
-            *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
-                                                    // svc 0
-            break;
-        default:
-            if (EQ <= i && i <= GE) {
-                *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
-                if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
-                else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
-                else { je[0] = 0xc3a00000; je[1] = 0xd3a00000; }           // movgt r0, #0; movle r0, #0
-                if (i == EQ || i == LT || i == GT) je[0] = je[0] | 1;
-                else je[1] = je[1] | 1;
-                je += 2;
-                break;
-            }
-            else if (i >= OPEN && i <= EXIT) {
-                switch (i) {
-                    case OPEN: tmp = (int) &open;    break;
-                    case READ: tmp = (int) &read;    break;
-                    case WRIT: tmp = (int) &write;   break;
-                    case CLOS: tmp = (int) &close;   break;
-                    case PRTF: tmp = (int) &printf;  break;
-                    case MALC: tmp = (int) &malloc;  break;
-                    case FREE: tmp = (int) &free;    break;
-                    case MSET: tmp = (int) &memset;  break;
-                    case MCMP: tmp = (int) &memcmp;  break;
-                    case MCPY: tmp = (int) &memcpy;  break;
-                    case MMAP: tmp = (int) &mmap;    break;
-                    case BSCH: tmp = (int) &bsearch; break;
-                    case DIV:  tmp = (int) &__div_trampoline;     break;
-                    case MOD:  tmp = (int) &__mod_trampoline;     break;
-                    case EXIT: tmp = (int) &exit;    break;
-                    default:
-                        if (elf) {
-                            tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
-                        } else {
-                            printf("Detected syscall other than supported ones! : %d\n", i);
-                            fflush(stdout);
-                            abort();
-                        }
-                }
 
-                if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
-                i = *pc;
-                if (i > 10) die("codegen: no support for 10+ arguments");
-                while (i > 0) *je++ = 0xe49d0004 | (--i << 12); // pop r(i-1)
-                i = *pc++;
-                if (i > 4) *je++ = 0xe92d03f0;               // push {r4-r9}
-                *je++ = 0xe28fe000;                          // add lr, pc, #0
-                if (!imm0) imm0 = je;
-                *il++ = (int) je++ + 1;
-                *iv++ = tmp;
-                if (i > 4) *je++ = 0xe28dd018;              // add sp, sp, #24
-                break;
+        printf("IR: %x\n", i);
+        fflush(stdout);
+
+        // tpi
+        if (i >> 8 == 0x09) {
+            printf("\nINSTRUCTION: tpi\n");
+            fflush(stdout);
+            printf("\tcbp: %x\n\t pc: %x\n", je, pc);
+            printf("\t----------\n");
+            fflush(stdout);
+            // @@@ tpi @@@
+            __asm__(
+                "tpi %[cbp], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je)
+                //inputs
+                : [pc]  "r"  (pc)
+                //clobbers
+                : "memory"
+            );
+            printf("\tcbp: %x\n\t ir: %x\n\n", je, pc);
+            fflush(stdout);
+        } else {
+            switch (i) {    
+                case LEA:
+                    tmp = *pc++;
+                    if (tmp >= 64 || tmp <= -64) {
+                        printf("jit: LEA %d out of bounds\n", tmp); exit(6);
+                    }
+                    if (tmp >= 0)
+                        *je++ = 0xe28b0000 | tmp * 4;    // add     r0, fp, #(tmp)
+                    else
+                        *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
+                    break;
+                case SIMM:
+                case LIMM:
+                    tmp = *pc++;
+                    if (0 <= tmp && tmp < 256)
+                        *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
+                    else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
+                    break;
+                /*
+                case JSR:
+                case JMP:
+                    pc++; je++; // postponed till second pass
+                    break;
+                */
+                case BZ:
+                case BNZ:
+                    *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
+                    break;
+                case ENT:
+                    *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
+                    tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
+                    if (tmp >= 64 || tmp < 0) {
+                        printf("jit: ENT %d out of bounds\n", tmp); exit(6);
+                    }
+                    break;
+                case ADJ:
+                    *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
+                    break;
+                case LEV:
+                    *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
+                    break;
+                case LI:
+                    *je++ = 0xe5900000;                  // ldr r0, [r0]
+                    break;
+                case LC:
+                    *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
+                    break;
+                case SI:
+                    *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
+                    break;
+                case SC:
+                    *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
+                    break;
+                case PSH:
+                    *je++ = 0xe52d0004;                       // push {r0}
+                    break;
+                case OR:
+                    *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
+                    break;
+                case XOR:
+                    *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
+                    break;
+                case AND:
+                    *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
+                    break;
+                case SHL:
+                    *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
+                    break;
+                case SHR:
+                    *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
+                    break;
+                case ADD:
+                    *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
+                    break;
+                case SUB:
+                    *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
+                    break;
+                case MUL:
+                    *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
+                    break;
+                case CLCA:
+                    *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
+                                                            // ldr r1, [sp]
+                    *je++ = 0xe3a0780f; *je++ = 0xe2877002; // mov r7, #0xf0000
+                                                            // add r7, r7, #2
+                    *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
+                                                            // svc 0
+                    break;
+                default:
+                    if (EQ <= i && i <= GE) {
+                        *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
+                        if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
+                        else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
+                        else { je[0] = 0xc3a00000; je[1] = 0xd3a00000; }           // movgt r0, #0; movle r0, #0
+                        if (i == EQ || i == LT || i == GT) je[0] = je[0] | 1;
+                        else je[1] = je[1] | 1;
+                        je += 2;
+                        break;
+                    }
+                    else if (i >= OPEN && i <= EXIT) {
+                        switch (i) {
+                            case OPEN: tmp = (int) &open;    break;
+                            case READ: tmp = (int) &read;    break;
+                            case WRIT: tmp = (int) &write;   break;
+                            case CLOS: tmp = (int) &close;   break;
+                            case PRTF: tmp = (int) &printf;  break;
+                            case MALC: tmp = (int) &malloc;  break;
+                            case FREE: tmp = (int) &free;    break;
+                            case MSET: tmp = (int) &memset;  break;
+                            case MCMP: tmp = (int) &memcmp;  break;
+                            case MCPY: tmp = (int) &memcpy;  break;
+                            case MMAP: tmp = (int) &mmap;    break;
+                            case BSCH: tmp = (int) &bsearch; break;
+                            case DIV:  tmp = (int) &__div_trampoline;     break;
+                            case MOD:  tmp = (int) &__mod_trampoline;     break;
+                            case EXIT: tmp = (int) &exit;    break;
+                            default:
+                                if (elf) {
+                                    tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
+                                } else {
+                                    printf("Detected syscall other than supported ones! : %d\n", i);
+                                    fflush(stdout);
+                                    abort();
+                                }
+                        }
+
+                        if (*pc++ != ADJ) die("codegen: no ADJ after native proc");
+                        i = *pc;
+                        if (i > 10) die("codegen: no support for 10+ arguments");
+                        while (i > 0) *je++ = 0xe49d0004 | (--i << 12); // pop r(i-1)
+                        i = *pc++;
+                        if (i > 4) *je++ = 0xe92d03f0;               // push {r4-r9}
+                        *je++ = 0xe28fe000;                          // add lr, pc, #0
+                        if (!imm0) imm0 = je;
+                        *il++ = (int) je++ + 1;
+                        *iv++ = tmp;
+                        if (i > 4) *je++ = 0xe28dd018;              // add sp, sp, #24
+                        break;
+                    }
+                    else {
+                        printf("code generation failed for %x!\n", i);
+                        free(iv);
+                        return 0;
+                    }
             }
-            else {
-                printf("code generation failed for %x!\n", i);
-                free(iv);
-                return 0;
-            }
+
         }
+
+
 
         if (imm0) {
             if (i == LEV) genpool = 1;
