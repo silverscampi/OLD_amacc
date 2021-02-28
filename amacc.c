@@ -517,7 +517,7 @@ void next()
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
                              "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [IR_OFST(*++le) * 5]);
-                    if (IR_OFST(*le) <= IR_OFST(ADJ)) printf(" %d\n", IR_OFST(*++le)); else printf("\n");
+                    if (IR_OFST(*le) <= IR_OFST(ADJ)) printf(" %d\n", *++le); else printf("\n");
                 }
             }
             ++line;
@@ -994,11 +994,17 @@ void gen(int *n)
 
     switch (i) {
     case Num: // get the value of integer
+    printf("gen.Num: n[1] = %d\n", n[1]);
+    fflush(stdout);
+    int *prev_e = e;
         if (0 <= n[1] && n[1] < 256) {
             *++e = SIMM; *++e = n[1];
         } else {
             *++e = LIMM; *++e = n[1];
         }
+    printf("e_0 : %04x\n", *++prev_e);
+    printf("e_1 : %04x\n", *++prev_e);
+    fflush(stdout);
         break;
     case Loc: // get the value of variable
         *++e = LEA; *++e = n[1];
@@ -1531,9 +1537,6 @@ int *codegen(int *jitmem, int *jitmap)
         if (i >> 8 == 0x03) {
             printf("INSTRUCTION: tpc\n");
             printf("\tcbp: %x\n\ttbp: %x\n\t ir: %x\n", je, templ_buf, IR_OFST(i));
-
-            printf("\ttbp+284: %x\n", *(templ_buf+284));
-            printf("\ttbp+0x11c: %x\n", *(templ_buf+0x11c));
             printf("\t----------\n");
             fflush(stdout);
             // @@@ tpc @@@
@@ -1589,7 +1592,7 @@ int *codegen(int *jitmem, int *jitmap)
         // tpcv1i
         } else if (i >> 8 == 0x2f) {
             printf("INSTRUCTION: tpcv1i\n");
-                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, IR_OFST(i), pc);
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
                 printf("\t----------\n");
                 fflush(stdout);
                 // @@@ tpcv1i @@@
@@ -1603,7 +1606,7 @@ int *codegen(int *jitmem, int *jitmap)
                     //clobbers
                     : "memory"
                 );
-                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n", je, IR_OFST(i), pc);
+                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
                 fflush(stdout);
         } else {
             switch (i) {    
