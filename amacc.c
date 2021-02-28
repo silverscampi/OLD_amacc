@@ -1567,6 +1567,25 @@ int *codegen(int *jitmem, int *jitmap)
             );
             printf("\tcbp: %x\n\t pc: %x\n\n", je, pc);
             fflush(stdout);
+        
+        // tpcii
+        } else if (i >> 8 == 0x13) {
+            printf("INSTRUCTION: tpcii\n");
+            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x \n\t", je, IR_OFST(i), pc);
+            printf("\t----------\n");
+            fflush(stdout);
+            // @@@ tpcii @@@
+            __asm__(
+                "tpcii %[cbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (pc)
+                //inputs
+                : [ir]  "r"  (IR_OFST(i))
+                //clobbers
+                : "memory"
+            );
+
         } else {
             switch (i) {    
                 case LEA:
@@ -1592,10 +1611,12 @@ int *codegen(int *jitmem, int *jitmap)
                     pc++; je++; // postponed till second pass
                     break;
                 */
+               /*
                 case BZ:
                 case BNZ:
                     *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
                     break;
+                */
                 case ENT:
                     *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
                     tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
