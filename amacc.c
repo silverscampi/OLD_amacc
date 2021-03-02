@@ -35,7 +35,7 @@ asm (".macro tpcv1i a, b, c\n\t"
      ".long (0xf7d00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-     asm (".macro tpcv2i a, b, c\n\t"
+asm (".macro tpcv2i a, b, c\n\t"
      ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
@@ -125,9 +125,7 @@ int templ_buf[] = {
     // LEA
     3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
 
-    // SIMM
-    1, 0xe3a00000, 0x0, 0x0, 0x0,
-    // LIMM     !!! no support !!!
+    // IMM      no support!
     0, 0x0, 0x0, 0x0, 0x0,
 
     // JMP
