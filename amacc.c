@@ -243,7 +243,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA , /*  0 */
+    LEA = 0x4f00,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -278,10 +278,10 @@ enum {
      * function calls.
      */
 
-    IMM , /*  1 */
+    IMM = 0x0001, 
     /* IMM <num> to put immediate <num> into general register */
 
-    JMP , /*  2 */
+    JMP = 0x0902,
     /* JMP <addr> will unconditionally set the value PC register to <addr> */
     /* The following pseudocode illustrates how JMP works:
      *     if (op == JMP) { pc = (int *) *pc; } // jump to the address
@@ -289,7 +289,7 @@ enum {
      * stores the argument of JMP instruction, i.e. the <addr>.
      */
 
-    JSR , /*  3 */
+    JSR = 0x0903,
     /* A function is a block of code, which may be far from the instruction
      * we are currently executing. That is reason why JMP instruction exists,
      * jumping into starting point of a function. JSR is introduced to perform
@@ -300,23 +300,23 @@ enum {
      * LEV to fetch the bookkeeping information to resume previous execution.
      */
 
-    BZ  , /*  4 : conditional jump if general register is zero */
-    BNZ , /*  5 : conditional jump if general register is not zero */
+    BZ  = 0x1304, /*  : conditional jump if general register is zero */
+    BNZ = 0x1305, /*  : conditional jump if general register is not zero */
 
-    ENT , /*  6 */
+    ENT = 0xaf06,
     /* ENT <size> is called when we are about to enter the function call to
      * "make a new calling frame". It will store the current PC value onto
      * the stack, and save some space(<size> bytes) to store the local
      * variables for function.
      */
 
-    ADJ , /*  7 */
+    ADJ = 0xaf07, 
     /* ADJ <size> is to adjust the stack, to "remove arguments from frame"
      * The following pseudocode illustrates how ADJ works:
      *     if (op == ADJ) { sp += *pc++; } // add esp, <size>
      */
 
-    LEV , /*  8 */
+    LEV = 0x0308,
     /* LEV fetches bookkeeping info to resume previous execution.
      * There is no POP instruction in our design, and the following pseudocode
      * illustrates how LEV works:
@@ -324,34 +324,43 @@ enum {
      *                      pc = (int *) *sp++; } // restore call frame and PC
      */
 
-    LI  , /*  9 */
+    LI  = 0x0309,
     /* LI loads an integer into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    LC  , /* 10 */
+    LC  = 0x030a,
     /* LC loads a character into general register from a given memory
      * address which is stored in general register before execution.
      */
 
-    SI  , /* 11 */
+    SI  = 0x030b,
     /* SI stores the integer in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    SC  , /* 12 */
+    SC  = 0x030c,
     /* SC stores the character in general register into the memory whose
      * address is stored on the top of the stack.
      */
 
-    PSH , /* 13 */
+    PSH = 0x030d,
     /* PSH pushes the value in general register onto the stack */
 
-    OR  , /* 14 */  XOR , /* 15 */  AND , /* 16 */
-    EQ  , /* 17 */  NE  , /* 18 */
-    LT  , /* 19 */  GT  , /* 20 */  LE  , /* 21 */ GE  , /* 22 */
-    SHL , /* 23 */  SHR , /* 24 */
-    ADD , /* 25 */  SUB , /* 26 */  MUL , /* 27 */
+    OR  = 0x030e,  
+    XOR = 0x030f,  
+    AND = 0x0310, 
+    EQ  = 0x0311,   
+    NE  = 0x0312, 
+    LT  = 0x0313,   
+    GT  = 0x0314,   
+    LE  = 0x0315,  
+    GE  = 0x0316, 
+    SHL = 0x0317,   
+    SHR = 0x0318, 
+    ADD = 0x0319,   
+    SUB = 0x031a,   
+    MUL = 0x031b, 
     /* arithmetic instructions
      * Each operator has two arguments: the first one is stored on the top
      * of the stack while the second is stored in general register.
@@ -362,9 +371,26 @@ enum {
      */
 
     /* system call shortcuts */
-    OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,MCPY,MMAP,DSYM,BSCH,STRT,DLOP,DIV,MOD,EXIT,
-    CLCA, /* clear cache, used by JIT compilation */
-    INVALID
+    OPEN = 0x001c,
+    READ = 0x001d,
+    WRIT = 0x001e,
+    CLOS = 0x001f,
+    PRTF = 0x0020,
+    MALC = 0x0021,
+    FREE = 0x0022,
+    MSET = 0x0023,
+    MCMP = 0x0024,
+    MCPY = 0x0025,
+    MMAP = 0x0026,
+    DSYM = 0x0027,
+    BSCH = 0x0028,
+    STRT = 0x0029,
+    DLOP = 0x002a,
+    DIV  = 0x002b,
+    MOD  = 0x002c,
+    EXIT = 0x002d,
+    CLCA = 0x002e, /* clear cache, used by JIT compilation */
+    INVALID = 0x002f
 };
 
 // types
@@ -485,8 +511,8 @@ void next()
                              "SHL  SHR  ADD  SUB  MUL  "
                              "OPEN READ WRIT CLOS PRTF MALC FREE "
                              "MSET MCMP MCPY MMAP "
-                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [*++le * 5]);
-                    if (*le <= ADJ) printf(" %d\n", *++le); else printf("\n");
+                             "DSYM BSCH STRT DLOP DIV  MOD  EXIT CLCA" [IR_OFST(*++le) * 5]);
+                    if (IR_OFST(*le) <= IR_OFST(ADJ)) printf(" %d\n", *++le); else printf("\n");
                 }
             }
             ++line;
