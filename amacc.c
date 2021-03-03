@@ -513,7 +513,8 @@ void next()
                 fflush(stdout);
                 exit(1);
                 if (*p == '=') { ++p; tk = DivAssign; }
-                else tk = Div; return;
+                else tk = Div;
+                return;
             }
             break;
         case '\'': // quotes start with character (string)
@@ -541,30 +542,39 @@ void next()
         case '=': if (*p == '=') { ++p; tk = Eq; } else tk = Assign; return;
         case '+': if (*p == '+') { ++p; tk = Inc; }
                   else if (*p == '=') { ++p; tk = AddAssign; }
-                  else tk = Add; return;
+                  else tk = Add;
+                  return;
         case '-': if (*p == '-') { ++p; tk = Dec; }
                   else if (*p == '>') { ++p; tk = Arrow; }
                   else if (*p == '=') { ++p; tk = SubAssign; }
-                  else tk = Sub; return;
+                  else tk = Sub;
+                  return;
         case '!': if (*p == '=') { ++p; tk = Ne; } return;
         case '<': if (*p == '=') { ++p; tk = Le; }
                   else if (*p == '<') { ++p; tk = Shl; }
-                  else tk = Lt; return;
+                  else tk = Lt;
+                  return;
         case '>': if (*p == '=') { ++p; tk = Ge; }
                   else if (*p == '>') { ++p; tk = Shr; }
-                  else tk = Gt; return;
+                  else tk = Gt;
+                  return;
         case '|': if (*p == '|') { ++p; tk = Lor; }
-                  else tk = Or; return;
+                  else tk = Or;
+                  return;
         case '&': if (*p == '&') { ++p; tk = Lan; }
-                  else tk = And; return;
-        case '^': tk = Xor; return;
+                  else tk = And;
+                  return;
+        case '^': tk = Xor;
+                  return;
         case '*': if (*p == '=') { ++p; tk = MulAssign; }
-                  else tk = Mul; return;
+                  else tk = Mul;
+                  return;
         case '%': printf("modulo operator '%%' or '%%= found - please use mod(a, b) instead!\n");
                   fflush(stdout);
                   exit(1);
                   if (*p == '=') { ++p; tk = ModAssign; }
-                  else tk = Mod; return;
+                  else tk = Mod;
+                  return;
         case '[': tk = Brak; return;
         case '?': tk = Cond; return;
         case '.': tk = Dot; return;
@@ -773,7 +783,8 @@ void expr(int lev)
         case Cond: // `x?a:b` is similar to if except that it relies on else
             next(); expr(Assign);
             if (tk == ':') next();
-            else fatal("conditional missing colon"); c = n;
+            else fatal("conditional missing colon");
+            c = n;
             expr(Cond); --n;
             *n = (int) (n + 1); *--n = (int) c; *--n = (int) b; *--n = Cond;
             break;
@@ -1055,7 +1066,8 @@ void gen(int *n)
             gen(b + 1); *++e = PSH; --j; b = (int *) a[j];
         }
         free(a);
-        if (i == Func) *++e = JSR; *++e = n[2];
+        if (i == Func) *++e = JSR;
+        *++e = n[2];
         if (n[3]) { *++e = ADJ; *++e = n[3]; }
         break;
     case While:
@@ -1109,12 +1121,15 @@ void gen(int *n)
         def = e + 1;
         gen((int *) n[1]); break;
     case Return:
-        if (n[1]) gen((int *) n[1]); *++e = LEV; break; // parse return AST
+        if (n[1]) gen((int *) n[1]);
+        *++e = LEV;
+        break; // parse return AST
     case '{':
         // parse expression or statment from AST
         gen((int *) n[1]); gen(n + 2); break;
     case Enter: *++e = ENT; *++e = n[1]; gen(n + 2);
-                if (*e != LEV) *++e = LEV; break;
+                if (*e != LEV) *++e = LEV;
+                break;
     default:
         if (i != ';') {
             printf("%d: compiler error gen=%d\n", line, i); exit(-1);
@@ -1127,7 +1142,8 @@ void stmt(int ctx)
 {
     int *a, *b, *c, *d, *f;
     int i, j;
-    int bt, ty;
+    int bt = -1;
+    int ty;
     struct member_s *m;
 
     switch (tk) {
@@ -1227,6 +1243,7 @@ void stmt(int ctx)
          */
         while (tk != ';' && tk != '}' && tk != ',' && tk != ')') {
             ty = bt;
+            if (ty == -1) fatal("uninitialised bt in stmt!\n");
             // if the beginning of * is a pointer type, then type plus `PTR`
             // indicates what kind of pointer
             while (tk == Mul) { next(); ty += PTR; }
@@ -1724,7 +1741,8 @@ printf("codegen count: %lu\n", icount_end-icount_start);
     // hack to jump into specific function pointer
     __clear_cache(jitmem, je);
     int *res = bsearch(&sym, sym, 1, 1, (void *) _start);
-    if (((void *) 0) != res) return 0; return -1; // make compiler happy
+    if (((void *) 0) != res) return 0;
+    return -1; // make compiler happy
 }
 
 int ELF32_ST_INFO(int b, int t) { return (b << 4) + (t & 0xf); }
@@ -2275,7 +2293,7 @@ enum { _O_CREAT = 64, _O_WRONLY = 1 };
 int main(int argc, char **argv)
 {
     int *freed_ast, *ast;
-    int elf_fd;
+    int elf_fd = -1;
     int i;
 
     --argc; ++argv;
