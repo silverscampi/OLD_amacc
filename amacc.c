@@ -1560,10 +1560,6 @@ int *codegen(int *jitmem, int *jitmap)
             
         // tpcii
         } else if (i >> 8 == 0x13) {
-            printf("INSTRUCTION: tpcii\n");
-            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x \n\t", je, IR_OFST(i), pc);
-            printf("\t----------\n");
-            fflush(stdout);
             // @@@ tpcii @@@
             __asm__(
                 "tpcii %[cbp], %[ir], %[pc]\n\t"
@@ -1575,32 +1571,44 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x \n\t", je, IR_OFST(i), pc);
-            fflush(stdout);
         
-        /*
+        // tpcv1i
+        } else if (i >> 8 == 0x2f) {
+            // @@@ tpcv1i @@@
+            __asm__(
+                "tpcv1i %[cbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (pc)
+                //inputs
+                : [ir]  "r"  (IR_OFST(i))
+                //clobbers
+                : "memory"
+            );
+
         // tpcv1si
         } else if (i >> 8 == 0xaf) {
             printf("INSTRUCTION: tpcv1si\n");
-                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
-                printf("\t----------\n");
-                fflush(stdout);
-                // @@@ tpcv1si @@@
-                __asm__(
-                    "tpcv1si %[cbp], %[ir], %[pc]\n\t"
-                    //outputs
-                    : [cbp] "+r" (je),
-                      [pc]  "+r" (pc)
-                    //inputs
-                    : [ir]  "r"  (IR_OFST(i))
-                    //clobbers
-                    : "memory"
-                );
-                printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
-                fflush(stdout);
-                */
+            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
+            printf("\t----------\n");
+            fflush(stdout);
+            // @@@ tpcv1si @@@
+            __asm__ (
+                "tpcv1si %[cbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (pc)
+                //inputs
+                : [ir]  "r"  (IR_OFST(i))
+                //clobbers
+                : "memory"
+            );
+            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
+            fflush(stdout);
+
         } else {
             switch (i) {    
+                /*
                 case LEA:
                     tmp = *pc++;
                     if (tmp >= 64 || tmp <= -64) {
@@ -1611,7 +1619,8 @@ int *codegen(int *jitmem, int *jitmap)
                     else
                         *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
                     break;
-                case SIMM:
+                */
+                //case SIMM:
                 case LIMM:
                     tmp = *pc++;
                     
@@ -1757,12 +1766,12 @@ int *codegen(int *jitmem, int *jitmap)
 
         }
 
-        
+        /*
         printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
-        
+        */
 
 
         if (imm0) {
