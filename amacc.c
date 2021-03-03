@@ -126,72 +126,70 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 int templ_buf[] = {
-    // LEA
+    // LEA      4f00
     3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
 
-    // SIMM
+    // SIMM     2f01
     1, 0xe3a00000, 0x0, 0x0, 0x0,
     // LIMM     !!! no support !!!
     0, 0x0, 0x0, 0x0, 0x0,
 
-    // JMP
+    // JMP      0903
     0, 0x0, 0x0, 0x0, 0x0,
     
-    // JSR
+    // JSR      0904
     0, 0x0, 0x0, 0x0, 0x0,
 
-    // BZ
+    // BZ       1305
     1, 0xe3500000, 0x0, 0x0, 0x0,
-    // BNZ
+    // BNZ      1306
     1, 0xe3500000, 0x0, 0x0, 0x0,
     
-    // ENT
+    // ENT      af07
     3, 0xe92d4800, 0xe28db000, 0xe24dd000, 0x0,
     
-    // ADJ
+    // ADJ      af08
     1, 0xe28dd000, 0x0, 0x0, 0x0,
 
-    // LEV
+    // LEV      0309
     2, 0xe28bd000, 0xe8bd8800, 0x0, 0x0,
-    // LI
+    // LI       030a
     1, 0xe5900000, 0x0, 0x0, 0x0,
-    
-    // LC 
+    // LC       030b
     1, 0xe5d00000, 0xe6af0070, 0x0, 0x0,
-    
-    // SI
+    // SI       030c
     2, 0xe49d1004, 0xe5810000, 0x0, 0x0,
-    // SC
+    // SC       030d
     2, 0xe49d1004, 0xe5c10000, 0x0, 0x0,
-    // PSH
+    // PSH      030e
     1, 0xe52d0004, 0x0, 0x0, 0x0,
-    // OR
+    // OR       030f
     2, 0xe49d1004, 0xe1810000, 0x0, 0x0,
-    // XOR
+    // XOR      0310
     2, 0xe49d1004, 0xe0210000, 0x0, 0x0,
-    // AND
+    // AND      0311
     2, 0xe49d1004, 0xe0010000, 0x0, 0x0,
-    // EQ
+    // EQ       0312
     4, 0xe49d1004, 0xe1510000, 0x03a00001, 0x13a00000,
-    // NE
+    // NE       0313
     4, 0xe49d1004, 0xe1510000, 0x03a00000, 0x13a00001,
-    // LT
+    // LT       0314
     4, 0xe49d1004, 0xe1510000, 0xb3a00001, 0xa3a00000,
-    // GT
+    // GT       0315
     4, 0xe49d1004, 0xe1510000, 0xc3a00001, 0xd3a00000,
-    // LE
+    // LE       0316
     4, 0xe49d1004, 0xe1510000, 0xc3a00000, 0xd3a00001,
-    // GE
+    // GE       0317
     4, 0xe49d1004, 0xe1510000, 0xb3a00000, 0xa3a00001,
-    // SHL
+    // SHL      0318
     2, 0xe49d1004, 0xe1a00011, 0x0, 0x0,
-    // SHR
+    // SHR      0319
     2, 0xe49d1004, 0xe1a00051, 0x0, 0x0,
-    // ADD
+    // ADD      031a
     2, 0xe49d1004, 0xe0800001, 0x0, 0x0,
-    // SUB
+    // SUB      031b
     2, 0xe49d1004, 0xe0410000, 0x0, 0x0,
-    // MUL
+    // MUL      031c
     2, 0xe49d1004, 0xe0000091, 0x0, 0x0
 };
 
@@ -1522,7 +1520,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
 
-        /*
+        
         printf("IR: %04x\n", i);
         int *pje = je;
         printf("word0: %x\n", pje[0]);
@@ -1530,15 +1528,11 @@ int *codegen(int *jitmem, int *jitmap)
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
         fflush(stdout);
-        */
+        
 
-    /*
+    
         // tpc
         if (i >> 8 == 0x03) {
-            printf("INSTRUCTION: tpc\n");
-            printf("\tcbp: %x\n\ttbp: %x\n\t ir: %x\n", je, templ_buf, IR_OFST(i));
-            printf("\t----------\n");
-            fflush(stdout);
             // @@@ tpc @@@
             __asm__ (
                 "tpc %[cbp], %[ir]\n\t"
@@ -1549,17 +1543,9 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            printf("\tcbp: %x\n\t ir: %x\n\n", je, IR_OFST(i));
-            fflush(stdout);
-        
+
         // tpi
-        } else */ if (i >> 8 == 0x09) {
-            /*
-            printf("INSTRUCTION: tpi\n");
-            printf("\tcbp: %x\n\t pc: %x\n", je, pc);
-            printf("\t----------\n");
-            fflush(stdout);
-            */
+        } else if (i >> 8 == 0x09) {
             // @@@ tpi @@@
             __asm__(
                 "tpi %[cbp], %[pc]\n\t"
@@ -1571,11 +1557,7 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            /*
-            printf("\tcbp: %x\n\t pc: %x\n\n", je, pc);
-            fflush(stdout);
-            */
-        /*
+            
         // tpcii
         } else if (i >> 8 == 0x13) {
             printf("INSTRUCTION: tpcii\n");
@@ -1593,7 +1575,9 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-        */
+            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x \n\t", je, IR_OFST(i), pc);
+            fflush(stdout);
+        
         /*
         // tpcv1si
         } else if (i >> 8 == 0xaf) {
@@ -1641,12 +1625,12 @@ int *codegen(int *jitmem, int *jitmap)
                     pc++; je++; // postponed till second pass
                     break;
                 */
-               
+                /*
                 case BZ:
                 case BNZ:
                     *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
                     break;
-                
+                */
                
                 case ENT:
                     *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
@@ -1659,7 +1643,7 @@ int *codegen(int *jitmem, int *jitmap)
                     *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
                     break;
                 
-                
+                /*
                 case LEV:
                     *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
                     break;
@@ -1710,6 +1694,7 @@ int *codegen(int *jitmem, int *jitmap)
                     *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
                                                             // svc 0
                     break;
+                */
                 
                 default:
                     
@@ -1772,12 +1757,12 @@ int *codegen(int *jitmem, int *jitmap)
 
         }
 
-        /*
+        
         printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
-        */
+        
 
 
         if (imm0) {
