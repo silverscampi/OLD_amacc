@@ -1706,7 +1706,7 @@ int *codegen(int *jitmem, int *jitmap)
         }
         // If the instruction has operand, increment instruction pointer to
         // skip he operand.
-        else if (i < IR_OFST(LEV)) { ++pc; }
+        else if (IR_OFST(i) < IR_OFST(LEV)) { ++pc; }
     }
     free(iv);
     return tje;
