@@ -1522,6 +1522,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
 
+        /*
         printf("IR: %04x\n", i);
         int *pje = je;
         printf("word0: %x\n", pje[0]);
@@ -1529,8 +1530,9 @@ int *codegen(int *jitmem, int *jitmap)
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
         fflush(stdout);
-        
+        */
 
+    /*
         // tpc
         if (i >> 8 == 0x03) {
             printf("INSTRUCTION: tpc\n");
@@ -1551,24 +1553,29 @@ int *codegen(int *jitmem, int *jitmap)
             fflush(stdout);
         
         // tpi
-        } else if (i >> 8 == 0x09) {
+        } else */ if (i >> 8 == 0x09) {
+            /*
             printf("INSTRUCTION: tpi\n");
             printf("\tcbp: %x\n\t pc: %x\n", je, pc);
             printf("\t----------\n");
             fflush(stdout);
+            */
             // @@@ tpi @@@
             __asm__(
                 "tpi %[cbp], %[pc]\n\t"
                 //outputs
-                : [cbp] "+r" (je)
+                : [cbp] "+r" (je),
+                  [pc]  "+r"  (pc)
                 //inputs
-                : [pc]  "r"  (pc)
+                : 
                 //clobbers
                 : "memory"
             );
+            /*
             printf("\tcbp: %x\n\t pc: %x\n\n", je, pc);
             fflush(stdout);
-        
+            */
+        /*
         // tpcii
         } else if (i >> 8 == 0x13) {
             printf("INSTRUCTION: tpcii\n");
@@ -1586,7 +1593,8 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-
+        */
+        /*
         // tpcv1si
         } else if (i >> 8 == 0xaf) {
             printf("INSTRUCTION: tpcv1si\n");
@@ -1606,6 +1614,7 @@ int *codegen(int *jitmem, int *jitmap)
                 );
                 printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
                 fflush(stdout);
+                */
         } else {
             switch (i) {    
                 case LEA:
@@ -1632,13 +1641,13 @@ int *codegen(int *jitmem, int *jitmap)
                     pc++; je++; // postponed till second pass
                     break;
                 */
-               /*
+               
                 case BZ:
                 case BNZ:
                     *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
                     break;
-                */
-               /*
+                
+               
                 case ENT:
                     *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
                     tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
@@ -1649,8 +1658,8 @@ int *codegen(int *jitmem, int *jitmap)
                 case ADJ:
                     *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
                     break;
-                */
-                /*
+                
+                
                 case LEV:
                     *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
                     break;
@@ -1701,9 +1710,9 @@ int *codegen(int *jitmem, int *jitmap)
                     *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
                                                             // svc 0
                     break;
-                */
+                
                 default:
-                    /*
+                    
                     if (EQ <= i && i <= GE) {
                         *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                         if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
@@ -1714,7 +1723,7 @@ int *codegen(int *jitmem, int *jitmap)
                         je += 2;
                         break;
                     }
-                    else */ if (i >= OPEN && i <= EXIT) {
+                    else  if (i >= OPEN && i <= EXIT) {
                         switch (i) {
                             case OPEN: tmp = (int) &open;    break;
                             case READ: tmp = (int) &read;    break;
@@ -1763,11 +1772,12 @@ int *codegen(int *jitmem, int *jitmap)
 
         }
 
+        /*
         printf("word0: %x\n", pje[0]);
         printf("word1: %x\n", pje[1]);
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
-
+        */
 
 
         if (imm0) {
