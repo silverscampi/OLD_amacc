@@ -1475,6 +1475,17 @@ static int __mod_trampoline(int a, int b) {
 
 int *codegen(int *jitmem, int *jitmap)
 {
+    // write templ_buf base pointer to dedicated system register
+    __asm__(
+        "mcr p15, #0, %0, cr12, cr0, #0"
+        //outputs
+        :
+        //inputs
+        : "r" (templ_buf)
+        //clobbers
+        : "memory"
+    );
+
     int i, tmp;
     int *je, *tje;    // current position in emitted native code
     int *immloc, *il;
@@ -1607,7 +1618,7 @@ int *codegen(int *jitmem, int *jitmap)
                     case EXIT: tmp = (int) &exit;    break;
                     default:
                         if (elf) {
-                            tmp = (int) plt_func_addr[i - OPEN];
+                            tmp = (int) plt_func_addr[i - IR_OFST(OPEN)];
                         } else {
                             printf("Detected syscall other than supported ones! : %d\n", i);
                             fflush(stdout);
@@ -1629,7 +1640,7 @@ int *codegen(int *jitmem, int *jitmap)
                 break;
             }
             else {
-                printf("code generation failed for %d!\n", i);
+                printf("code generation failed for %x!\n", i);
                 free(iv);
                 return 0;
             }
@@ -1695,7 +1706,7 @@ int *codegen(int *jitmem, int *jitmap)
         }
         // If the instruction has operand, increment instruction pointer to
         // skip he operand.
-        else if (i < LEV) { ++pc; }
+        else if (i < IR_OFST(LEV)) { ++pc; }
     }
     free(iv);
     return tje;
@@ -1930,7 +1941,7 @@ int elf32(int poolsz, int *main, int elf_fd)
      * (4 instruction * 4 bytes), so the first codegen and second codegen
      * have consistent code_size.
      */
-    int FUNC_NUM = EXIT - OPEN + 1;
+    int FUNC_NUM = IR_OFST(EXIT) - IR_OFST(OPEN) + 1;
     plt_func_addr = malloc(sizeof(char *) * FUNC_NUM);
     for (i = 0; i < FUNC_NUM; i++)
         plt_func_addr[i] = o + i * 16;
@@ -2084,11 +2095,11 @@ int elf32(int poolsz, int *main, int elf_fd)
     char *ldso = append_strtab(&data, "libdl.so.2");
     char *libgcc_s = append_strtab(&data, "libgcc_s.so.1");
 
-    int *func_entries = (int *) malloc(sizeof(int) * (EXIT + 1));
+    int *func_entries = (int *) malloc(sizeof(int) * (IR_OFST(EXIT) + 1));
     if (!func_entries) die("elf32: could not malloc func_entries table");
 
-    for (i = OPEN; i <= EXIT; i++)
-        func_entries[i] = append_strtab(&data, scnames[i - OPEN]) - dynstr_addr;
+    for (i = IR_OFST(OPEN); i <= IR_OFST(EXIT); i++)
+        func_entries[i] = append_strtab(&data, scnames[i - IR_OFST(OPEN)]) - dynstr_addr;
 
     int dynstr_size = data - dynstr_addr;
     o += dynstr_size;
@@ -2099,7 +2110,7 @@ int elf32(int poolsz, int *main, int elf_fd)
     memset(data, 0, SYM_ENT_SIZE);
     data += SYM_ENT_SIZE;
 
-    for (i = OPEN; i <= EXIT; i++)
+    for (i = IR_OFST(OPEN); i <= IR_OFST(EXIT); i++)
         append_func_sym(&data, func_entries[i]);
 
     int dynsym_size = SYM_ENT_SIZE * (FUNC_NUM + 1);
@@ -2215,7 +2226,7 @@ int elf32(int poolsz, int *main, int elf_fd)
     if ((int *) je >= jitmap) die("elf32: jitmem too small");
 
     // Relocate _start() stub.
-    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[STRT - OPEN] - code_addr - 0x28);
+    *((int *) (code + 0x28)) = reloc_bl(plt_func_addr[IR_OFST(STRT) - IR_OFST(OPEN)] - code_addr - 0x28);
     *((int *) (code + 0x44)) =
         reloc_bl(jitmap[((int) main - (int) text) >> 2] - (int) code - 0x44);
 
@@ -2310,6 +2321,8 @@ int main(int argc, char **argv)
     }
     if (argc > 0 && **argv == '-' && streq(*argv, "-fsigned-char")) {
         signed_char = 1; --argc; ++argv;
+        // Enable emission of second word (sign ext) for LC IR
+        templ_buf[IR_OFST_BUF(LC)] = 2;
     }
     if (argc > 0 && **argv == '-' && (*argv)[1] == 'o') {
         elf = 1; --argc; ++argv;
@@ -2381,7 +2394,7 @@ int main(int argc, char **argv)
     }
 
     // add library to symbol table
-    for (i = OPEN; i < INVALID; i++) {
+    for (i = IR_OFST(OPEN); i < IR_OFST(INVALID); i++) {
         next(); id->class = Syscall; id->type = INT; id->val = i;
     }
     next(); id->tk = Char; // handle void type
