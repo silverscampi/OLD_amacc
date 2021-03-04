@@ -127,7 +127,8 @@ int ld;              // local variable depth
 
 int templ_buf[] = {
     // LEA      cf00
-    3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
+    //3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
+    1, 0xe28b0000, 0xe24b0000, 0x0, 0x0,
 
     // SIMM     2f01
     1, 0xe3a00000, 0x0, 0x0, 0x0,
@@ -1588,12 +1589,6 @@ int *codegen(int *jitmem, int *jitmap)
 
         // tpcv1si
         } else if (i >> 8 == 0xaf) {
-            /*
-            printf("INSTRUCTION: tpcv1si\n");
-            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
-            printf("\t----------\n");
-            fflush(stdout);
-            */
             // @@@ tpcv1si @@@
             __asm__ (
                 "tpcv1si %[cbp], %[ir], %[pc]\n\t"
@@ -1605,13 +1600,22 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            /*
-            printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
-            fflush(stdout);
-            */
-
+            
+        // tpcv2si
+        } else if (i >> 8 == 0xcf) {
+            __asm__(
+                "tpcv2si %[cbp], %[ir], %[pc]\n\t"
+                //outputs
+                : [cbp] "+r" (je),
+                  [pc]  "+r" (pc)
+                //inputs
+                : [ir]  "r"  (IR_OFST(i))
+                //clobbers
+                : "memory"
+            );
         } else {
             switch (i) {    
+                /*
                 case LEA:
                     tmp = *pc++;
                     if (tmp >= 64 || tmp <= -64) {
@@ -1622,6 +1626,8 @@ int *codegen(int *jitmem, int *jitmap)
                     else
                         *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
                     break;
+                */
+                
                 //case SIMM:
                 case LIMM:
                     tmp = *pc++;
@@ -1708,7 +1714,7 @@ int *codegen(int *jitmem, int *jitmap)
                 */
                 
                 default:
-                    
+                    /*
                     if (EQ <= i && i <= GE) {
                         *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
                         if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
@@ -1719,7 +1725,7 @@ int *codegen(int *jitmem, int *jitmap)
                         je += 2;
                         break;
                     }
-                    else  if (i >= OPEN && i <= EXIT) {
+                    else */ if (i >= OPEN && i <= EXIT) {
                         switch (i) {
                             case OPEN: tmp = (int) &open;    break;
                             case READ: tmp = (int) &read;    break;
