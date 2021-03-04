@@ -1520,19 +1520,8 @@ int *codegen(int *jitmem, int *jitmap)
         // "pc - text" gets the index of IR.
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
-
-        /*
-        printf("IR: %04x\n", i);
-        int *pje = je;
-        printf("word0: %x\n", pje[0]);
-        printf("word1: %x\n", pje[1]);
-        printf("word2: %x\n", pje[2]);
-        printf("word3: %x\n\n", pje[3]);
-        fflush(stdout);
-        */
-
-    
-        // tpc
+   
+        // is tpc ? by far most common
         if (i >> 8 == 0x03) {
             // @@@ tpc @@@
             __asm__ (
@@ -1544,8 +1533,52 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
+        
+        // is var-type?
+        } else if (GET_FLAG_V(i)) {
+            // is tpcv1i?
+            if (i >> 8 == 0x2f) {
+                // @@@ tpcv1i @@@
+                __asm__(
+                    "tpcv1i %[cbp], %[ir], %[pc]\n\t"
+                    //outputs
+                    : [cbp] "+r" (je),
+                    [pc]  "+r" (pc)
+                    //inputs
+                    : [ir]  "r"  (IR_OFST(i))
+                    //clobbers
+                    : "memory"
+                );
+            
+            // is tpcv2si?
+            } else if (i >> 8 == 0xcf) {
+                __asm__(
+                    "tpcv2si %[cbp], %[ir], %[pc]\n\t"
+                    //outputs
+                    : [cbp] "+r" (je),
+                    [pc]  "+r" (pc)
+                    //inputs
+                    : [ir]  "r"  (IR_OFST(i))
+                    //clobbers
+                    : "memory"
+                );
+            
+            // is tpcv1si?
+            } else {
+                // @@@ tpcv1si @@@
+                __asm__ (
+                    "tpcv1si %[cbp], %[ir], %[pc]\n\t"
+                    //outputs
+                    : [cbp] "+r" (je),
+                    [pc]  "+r" (pc)
+                    //inputs
+                    : [ir]  "r"  (IR_OFST(i))
+                    //clobbers
+                    : "memory"
+                );
+            }
 
-        // tpi
+        // is tpi?
         } else if (i >> 8 == 0x09) {
             // @@@ tpi @@@
             __asm__(
@@ -1558,9 +1591,9 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-            
-        // tpcii
-        } else if (i >> 8 == 0x13) {
+        
+        // is templatable at all?
+        } else if (GET_FLAG_T(i)) {
             // @@@ tpcii @@@
             __asm__(
                 "tpcii %[cbp], %[ir], %[pc]\n\t"
@@ -1572,63 +1605,10 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
-        
-        // tpcv1i
-        } else if (i >> 8 == 0x2f) {
-            // @@@ tpcv1i @@@
-            __asm__(
-                "tpcv1i %[cbp], %[ir], %[pc]\n\t"
-                //outputs
-                : [cbp] "+r" (je),
-                  [pc]  "+r" (pc)
-                //inputs
-                : [ir]  "r"  (IR_OFST(i))
-                //clobbers
-                : "memory"
-            );
 
-        // tpcv1si
-        } else if (i >> 8 == 0xaf) {
-            // @@@ tpcv1si @@@
-            __asm__ (
-                "tpcv1si %[cbp], %[ir], %[pc]\n\t"
-                //outputs
-                : [cbp] "+r" (je),
-                  [pc]  "+r" (pc)
-                //inputs
-                : [ir]  "r"  (IR_OFST(i))
-                //clobbers
-                : "memory"
-            );
-            
-        // tpcv2si
-        } else if (i >> 8 == 0xcf) {
-            __asm__(
-                "tpcv2si %[cbp], %[ir], %[pc]\n\t"
-                //outputs
-                : [cbp] "+r" (je),
-                  [pc]  "+r" (pc)
-                //inputs
-                : [ir]  "r"  (IR_OFST(i))
-                //clobbers
-                : "memory"
-            );
+        // no template support atm, hand over to original amacc 
         } else {
             switch (i) {    
-                /*
-                case LEA:
-                    tmp = *pc++;
-                    if (tmp >= 64 || tmp <= -64) {
-                        printf("jit: LEA %d out of bounds\n", tmp); exit(6);
-                    }
-                    if (tmp >= 0)
-                        *je++ = 0xe28b0000 | tmp * 4;    // add     r0, fp, #(tmp)
-                    else
-                        *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
-                    break;
-                */
-                
-                //case SIMM:
                 case LIMM:
                     tmp = *pc++;
                     
@@ -1636,96 +1616,9 @@ int *codegen(int *jitmem, int *jitmap)
                         *je++ = 0xe3a00000 + tmp;        // mov r0, #(tmp)
                     else { if (!imm0) imm0 = je; *il++ = (int) (je++); *iv++ = tmp; }
                     break;
-                /*
-                case JSR:
-                case JMP:
-                    pc++; je++; // postponed till second pass
-                    break;
-                */
-                /*
-                case BZ:
-                case BNZ:
-                    *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
-                    break;
-                */
-               /*
-                case ENT:
-                    *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
-                    tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
-                    if (tmp >= 64 || tmp < 0) {
-                        printf("jit: ENT %d out of bounds\n", tmp); exit(6);
-                    }
-                    break;
-                case ADJ:
-                    *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
-                    break;
-                */
-                /*
-                case LEV:
-                    *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
-                    break;
-                case LI:
-                    *je++ = 0xe5900000;                  // ldr r0, [r0]
-                    break;
-                case LC:
-                    *je++ = 0xe5d00000; if (signed_char)  *je++ = 0xe6af0070; // ldrb r0, [r0]; (sxtb r0, r0)
-                    break;
-                case SI:
-                    *je++ = 0xe49d1004; *je++ = 0xe5810000; // pop {r1}; str r0, [r1]
-                    break;
-                case SC:
-                    *je++ = 0xe49d1004; *je++ = 0xe5c10000; // pop {r1}; strb r0, [r1]
-                    break;
-                case PSH:
-                    *je++ = 0xe52d0004;                       // push {r0}
-                    break;
-                case OR:
-                    *je++ = 0xe49d1004; *je++ = 0xe1810000; // pop {r1}; orr r0, r1, r0
-                    break;
-                case XOR:
-                    *je++ = 0xe49d1004; *je++ = 0xe0210000; // pop {r1}; eor r0, r1, r0
-                    break;
-                case AND:
-                    *je++ = 0xe49d1004; *je++ = 0xe0010000; // pop {r1}; and r0, r1, r0
-                    break;
-                case SHL:
-                    *je++ = 0xe49d1004; *je++ = 0xe1a00011; // pop {r1}; lsl r0, r1, r0
-                    break;
-                case SHR:
-                    *je++ = 0xe49d1004; *je++ = 0xe1a00051; // pop {r1}; asr r0, r1, r0
-                    break;
-                case ADD:
-                    *je++ = 0xe49d1004; *je++ = 0xe0800001; // pop {r1}; add r0, r0, r1
-                    break;
-                case SUB:
-                    *je++ = 0xe49d1004; *je++ = 0xe0410000; // pop {r1}; sub r0, r1, r0
-                    break;
-                case MUL:
-                    *je++ = 0xe49d1004; *je++ = 0xe0000091; // pop {r1}; mul r0, r1, r0
-                    break;
-                case CLCA:
-                    *je++ = 0xe59d0004; *je++ = 0xe59d1000; // ldr r0, [sp, #4]
-                                                            // ldr r1, [sp]
-                    *je++ = 0xe3a0780f; *je++ = 0xe2877002; // mov r7, #0xf0000
-                                                            // add r7, r7, #2
-                    *je++ = 0xe3a02000; *je++ = 0xef000000; // mov r2, #0
-                                                            // svc 0
-                    break;
-                */
                 
                 default:
-                    /*
-                    if (EQ <= i && i <= GE) {
-                        *je++ = 0xe49d1004; *je++ = 0xe1510000; // pop {r1}; cmp r1, r0
-                        if (i <= NE) { je[0] = 0x03a00000; je[1] = 0x13a00000; }   // moveq r0, #0; movne r0, #0
-                        else if (i == LT || i == GE) { je[0] = 0xb3a00000; je[1] = 0xa3a00000; } // movlt r0, #0; movge   r0, #0
-                        else { je[0] = 0xc3a00000; je[1] = 0xd3a00000; }           // movgt r0, #0; movle r0, #0
-                        if (i == EQ || i == LT || i == GT) je[0] = je[0] | 1;
-                        else je[1] = je[1] | 1;
-                        je += 2;
-                        break;
-                    }
-                    else */ if (i >= OPEN && i <= EXIT) {
+                    if (i >= OPEN && i <= EXIT) {
                         switch (i) {
                             case OPEN: tmp = (int) &open;    break;
                             case READ: tmp = (int) &read;    break;
@@ -1774,12 +1667,6 @@ int *codegen(int *jitmem, int *jitmap)
 
         }
 
-        /*
-        printf("word0: %x\n", pje[0]);
-        printf("word1: %x\n", pje[1]);
-        printf("word2: %x\n", pje[2]);
-        printf("word3: %x\n\n", pje[3]);
-        */
 
 
         if (imm0) {
