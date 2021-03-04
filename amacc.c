@@ -35,7 +35,7 @@ asm (".macro tpcv1i a, b, c\n\t"
      ".long (0xf7d00001 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
-asm (".macro tpcv2i a, b, c\n\t"
+asm (".macro tpcv2si a, b, c\n\t"
      ".long (0xf7d00002 | (ZZ_\\a << 16) | (ZZ_\\b << 12) | (ZZ_\\c << 8))\n\t"
      ".endm\n\t");
 
@@ -126,7 +126,7 @@ int *n;              // current position in emitted abstract syntax tree
 int ld;              // local variable depth
 
 int templ_buf[] = {
-    // LEA      4f00
+    // LEA      cf00
     3, 0xe3500000, 0x528b0000, 0x424b0000, 0x0, // cmp, addpl, addmi
 
     // SIMM     2f01
@@ -247,7 +247,7 @@ enum {
  *     pc = text;
  */
 enum {
-    LEA = 0x4f00,
+    LEA = 0xcf00,
     /* LEA addressed the problem how to fetch arguments inside sub-function.
      * Let's check out what a calling frame looks like before learning how
      * to fetch arguments (Note that arguments are pushed in its calling
@@ -1520,7 +1520,7 @@ int *codegen(int *jitmem, int *jitmap)
         // "je" points to native instruction buffer's current location.
         jitmap[((int) pc++ - (int) text) >> 2] = (int) je;
 
-        
+        /*
         printf("IR: %04x\n", i);
         int *pje = je;
         printf("word0: %x\n", pje[0]);
@@ -1528,7 +1528,7 @@ int *codegen(int *jitmem, int *jitmap)
         printf("word2: %x\n", pje[2]);
         printf("word3: %x\n\n", pje[3]);
         fflush(stdout);
-        
+        */
 
     
         // tpc
@@ -1588,10 +1588,12 @@ int *codegen(int *jitmem, int *jitmap)
 
         // tpcv1si
         } else if (i >> 8 == 0xaf) {
+            /*
             printf("INSTRUCTION: tpcv1si\n");
             printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
             printf("\t----------\n");
             fflush(stdout);
+            */
             // @@@ tpcv1si @@@
             __asm__ (
                 "tpcv1si %[cbp], %[ir], %[pc]\n\t"
@@ -1603,12 +1605,13 @@ int *codegen(int *jitmem, int *jitmap)
                 //clobbers
                 : "memory"
             );
+            /*
             printf("\tcbp: %x\n\t ir: %x\n\t pc: %x\n\tvar: %d\n", je, IR_OFST(i), pc, *pc);
             fflush(stdout);
+            */
 
         } else {
             switch (i) {    
-                /*
                 case LEA:
                     tmp = *pc++;
                     if (tmp >= 64 || tmp <= -64) {
@@ -1619,7 +1622,6 @@ int *codegen(int *jitmem, int *jitmap)
                     else
                         *je++ = 0xe24b0000 | (-tmp) * 4; // sub     r0, fp, #(tmp)
                     break;
-                */
                 //case SIMM:
                 case LIMM:
                     tmp = *pc++;
@@ -1640,7 +1642,7 @@ int *codegen(int *jitmem, int *jitmap)
                     *je++ = 0xe3500000; pc++; je++;      // cmp r0, #0
                     break;
                 */
-               
+               /*
                 case ENT:
                     *je++ = 0xe92d4800; *je++ = 0xe28db000; // push {fp, lr}; add  fp, sp, #0
                     tmp = *pc++; if (tmp) *je++ = 0xe24dd000 | (tmp * 4); // sub  sp, sp, #(tmp * 4)
@@ -1651,7 +1653,7 @@ int *codegen(int *jitmem, int *jitmap)
                 case ADJ:
                     *je++ = 0xe28dd000 + *pc++ * 4;      // add sp, sp, #(tmp * 4)
                     break;
-                
+                */
                 /*
                 case LEV:
                     *je++ = 0xe28bd000; *je++ = 0xe8bd8800; // add sp, fp, #0; pop {fp, pc}
